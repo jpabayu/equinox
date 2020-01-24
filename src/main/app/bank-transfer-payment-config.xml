@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd">
+
+	<flow name="bankTransferPaymentConfigFlow">
+		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
+			doc:name="Variable" />
+
+		<set-variable
+			value="#[otp = (originalPayload['otp'] == null) ? '' : originalPayload['otp']]"
+			variableName="otp" doc:name="Variable" />
+		<set-variable
+			value="[credential = (originalPayload['credential'] == null) ? '' : originalPayload['credential']]"
+			variableName="credential" doc:name="Variable" />
+		<set-variable
+			value="#[accessTypeID = (originalPayload['accessTypeID'] == null) ? '' : originalPayload['accessTypeID']]"
+			variableName="accessTypeID" doc:name="Variable" />
+
+		<expression-component doc:name="Expression">
+		<![CDATA[
+			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+				   <soapenv:Header>
+				      <ser:headerAuth>
+				         <token>' + flowVars['tokennc'] + '</token>
+				      </ser:headerAuth>
+				   </soapenv:Header>
+				   <soapenv:Body>
+				      <ser:bankAccountTransferPayment>
+				         <accountName>' + originalPayload['accountName'] + '</accountName>
+				         <accountNumber>' + originalPayload['accountNo'] + '</accountNumber>
+				         <amount>' + originalPayload['amount'] + '</amount>
+				         <bankID>' + originalPayload['bankID'] + '</bankID>
+				         <description>' + originalPayload['description'] + '</description>
+				         <otp>' + flowVars['otp'] + '</otp>
+				         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+				         <username>' + originalPayload['fromMember'] + '</username>
+				         <credential>' + flowVars['credential'] + '</credential>
+				         <accessTypeID>' + flowVars['accessTypeID'] + '</accessTypeID>
+				      </ser:bankAccountTransferPayment>
+				   </soapenv:Body>
+				</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<set-payload
+			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="interbanks" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction"
+					value="&quot;bankAccountTransferPayment&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<set-variable value="#[xpath3('//status/message')]"
+			variableName="status" doc:name="Variable" />
+		<set-variable value="#[xpath3('//transactionAmount')]"
+			variableName="amount" doc:name="Variable" />
+		<set-variable value="#[xpath3('//transactionNumber')]"
+			variableName="trxNo" doc:name="Variable" />
+		<set-variable value="#[xpath3('//totalFees')]"
+			variableName="totalFees" doc:name="Variable" />
+		<set-variable value="#[xpath3('//finalAmount')]"
+			variableName="finalAmount" doc:name="Variable" />
+		<set-variable value="#[xpath3('//accountName')]"
+			variableName="accountName" doc:name="Variable" />
+		<set-variable value="#[xpath3('//accountNumber')]"
+			variableName="accountNumber" doc:name="Variable" />
+		<set-variable value="#[xpath3('//bankName')]"
+			variableName="bankName" doc:name="Variable" />
+		<set-variable value="#[xpath3('//twoFactorAuthentication')]"
+			variableName="twoFactorAuthentication" doc:name="Variable" />
+		<choice doc:name="Choice">
+			<when expression="#[flowVars['status'] == 'REQUEST_RECEIVED']">
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					bodyMap = new java.util.LinkedHashMap();
+					bodyMap['amount']= flowVars['amount'];
+					bodyMap['totalFee']= flowVars['totalFees'];
+					bodyMap['finalAmount']= flowVars['finalAmount'];
+					bodyMap['traceNumber']= originalPayload['traceNumber'];
+					bodyMap['transactionNumber']= flowVars['trxNo'];
+			
+					accDetailMap = new java.util.HashMap();				
+					accountMap = new java.util.LinkedHashMap();
+					accountMap['accountName']= originalPayload['accountName'];
+					accountMap['accountNo']= flowVars['accountNumber'];
+					accountMap['bankName']= flowVars['bankName'];
+					accDetailMap['accountDetail'] = accountMap;
+			
+					responseList = new java.util.LinkedList();
+					responseList = [bodyMap,accDetailMap];
+					
+					responseMap = new java.util.HashMap();
+					responseMap['BankTransferPaymentResponse']= responseList;
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+					payload = responseMap;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(flowVars['status']);			
+					payload = responseMap;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+	</flow>
+
+</mule>

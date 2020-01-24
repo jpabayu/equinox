@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd">
+
+	<flow name="posInvoiceConfigFlow">
+		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+		<![CDATA[
+			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+				   <soapenv:Header>
+				      <ser:headerAuth>
+				         <token>' + flowVars['tokennc'] + '</token>
+				      </ser:headerAuth>
+				   </soapenv:Header>
+				   <soapenv:Body>
+				      <ser:loadTerminalByID>
+				         <terminalID>' + originalPayload['terminalID'] + '</terminalID>
+				         <toMember>' + originalPayload['parentUsername'] + '</toMember>
+				      </ser:loadTerminalByID>
+				   </soapenv:Body>
+				</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="pos" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction" value="&quot;loadTerminalByID&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<set-variable value="#[xpath3('//terminal/city')]"
+			variableName="city" doc:name="Variable" />
+		<set-variable value="#[xpath3('//terminal/postalCode')]"
+			variableName="postalCode" doc:name="Variable" />
+		<set-variable value="#[xpath3('//terminal/name')]"
+			variableName="terminalName" doc:name="Variable" />
+		<set-variable value="#[xpath3('//terminal/openPayment')]"
+			variableName="openPayment" doc:name="Variable" />
+		<set-variable value="#[xpath3('//terminal/fixedAmount')]"
+			variableName="fixedAmount" doc:name="Variable" />
+		<choice doc:name="Choice">
+			<when expression="#[flowVars['openPayment'] == 'false']">
+				<choice doc:name="Choice">
+					<when expression="#[flowVars['fixedAmount'] == 'true']">
+						<expression-component doc:name="Expression">
+							<![CDATA[
+							bc =  new org.equinox.api.qrcode.QRComposer();
+							bc.setCrc(new org.equinox.api.qrcode.DefaultCrcCalculator());
+							bc.set('00', '01');
+							bc.set('01', '11');
+							bc.set('02', '1234567890123456');
+							bc.set('03', '1234567890123456');
+						
+							bc.set('26', '00', 'ID.CO.OPTIMA');
+							bc.set('26', '00', 'ID.CO.OPTIMA');
+							bc.set('26', '02', originalPayload['parentUsername']);
+							bc.set('26', '03', 'UMI');
+						
+							bc.set('51', '00', 'ID.CO.OPTIMA');
+							bc.set('51', '02', originalPayload['parentUsername']);
+							bc.set('51', '03', 'UMI');
+						
+							bc.set('52', '1110');
+							bc.set('53', '360');
+						
+							bc.set('58', 'IDR');
+						
+							bc.set('59', flowVars['terminalName']);
+							bc.set('60', flowVars['city']);
+							bc.set('61', flowVars['postalCode']);
+						
+							bc.set('62', '07', originalPayload['terminalID']);
+									
+							payload = bc.doCompose();]]>
+						</expression-component>
+						<expression-component doc:name="Expression">
+							<![CDATA[
+							toMemberMap = new java.util.HashMap();
+							toMemberMap['qrData']= payload;	
+							responseMap = new java.util.LinkedHashMap();
+							responseMap['qrDetail']= toMemberMap;
+							responseList = new java.util.LinkedList();
+							responseList = [responseMap];
+							confirmMap = new java.util.HashMap();
+							confirmMap['POSInvoiceResponse']= responseList;	
+							confirmMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+							payload = confirmMap;]]>
+						</expression-component>
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression">
+						<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+						   <soapenv:Header>
+						      <ser:headerAuth>
+						         <token>' + flowVars['tokennc'] + '</token>
+						      </ser:headerAuth>
+						   </soapenv:Header>
+						   <soapenv:Body>
+						      <ser:posGenerateInvoice>
+						         <amount>' + originalPayload['amount'] + '</amount>
+						         <invoiceNumber>' + originalPayload['invoiceNumber'] + '</invoiceNumber>
+						         <terminalID>' + originalPayload['terminalID'] + '</terminalID>
+						         <toMember>' + originalPayload['parentUsername'] + '</toMember>
+						      </ser:posGenerateInvoice>
+						   </soapenv:Body>
+						</soapenv:Envelope>';
+						payload = msg;]]>
+						</expression-component>
+						<http:request config-ref="HTTP_Request_Configuration"
+							path="pos" method="POST" doc:name="HTTP">
+							<http:request-builder>
+								<http:header headerName="soapaction"
+									value="&quot;posGenerateInvoice&quot;" />
+							</http:request-builder>
+						</http:request>
+						<byte-array-to-string-transformer
+							doc:name="Byte Array to String" />
+						<set-variable value="#[xpath3('//status/message')]"
+							variableName="status" doc:name="Variable" />
+						<set-variable value="#[xpath3('//terminal/id')]"
+							variableName="terminalID" doc:name="Variable" />
+						<set-variable value="#[xpath3('//terminal/city')]"
+							variableName="city" doc:name="Variable" />
+						<set-variable value="#[xpath3('//terminal/postalCode')]"
+							variableName="postalCode" doc:name="Variable" />
+						<set-variable value="#[xpath3('//terminal/name')]"
+							variableName="terminalName" doc:name="Variable" />
+						<set-variable value="#[xpath3('//terminal/openPayment')]"
+							variableName="openPayment" doc:name="Variable" />
+						<set-variable value="#[xpath3('//invoiceID')]"
+							variableName="invoice" doc:name="Variable" />
+						<set-variable value="#[xpath3('//ticketID')]"
+							variableName="ticket" doc:name="Variable" />
+						<choice doc:name="Choice">
+							<when expression="#[flowVars['status'] == 'PROCESSED']">
+								<expression-component doc:name="Expression">
+								<![CDATA[
+									bc =  new org.equinox.api.qrcode.QRComposer();
+									bc.setCrc(new org.equinox.api.qrcode.DefaultCrcCalculator());
+									bc.set('00', '01');
+									bc.set('01', '11');
+									bc.set('02', '1234567890123456');
+									bc.set('03', '1234567890123456');
+								
+									bc.set('26', '00', 'ID.CO.OPTIMA');
+									bc.set('26', '02', originalPayload['parentUsername']);
+									bc.set('26', '03', 'UMI');
+								
+									bc.set('51', '00', 'ID.CO.OPTIMA');
+									bc.set('51', '02', originalPayload['parentUsername']);
+									bc.set('51', '03', 'UMI');
+								
+									bc.set('52', '1110');
+									bc.set('53', '360');
+								
+									bc.set('54', originalPayload['amount']);
+									bc.set('55', '02');
+									bc.set('56', '0');
+									bc.set('58', 'IDR');
+								
+									bc.set('59', flowVars['terminalName']);
+									bc.set('60', flowVars['city']);
+									bc.set('61', flowVars['postalCode']);
+								
+									bc.set('62', '01', flowVars['ticket']);
+									bc.set('62', '07', originalPayload['terminalID']);
+											
+									payload = bc.doCompose();]]>
+								</expression-component>
+								<expression-component doc:name="Expression">
+									<![CDATA[
+									toMemberMap = new java.util.HashMap();
+									toMemberMap['qrData']= payload;	
+									responseMap = new java.util.LinkedHashMap();
+									responseMap['qrDetail']= toMemberMap;
+									responseList = new java.util.LinkedList();
+									responseList = [responseMap];
+									confirmMap = new java.util.HashMap();
+									confirmMap['POSInvoiceResponse']= responseList;	
+									confirmMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+									payload = confirmMap;]]>
+								</expression-component>
+							</when>
+							<otherwise>
+								<expression-component doc:name="Expression">
+									<![CDATA[
+									responseMap = new java.util.HashMap();
+									responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(flowVars['status']);	
+									payload = responseMap;]]>
+								</expression-component>
+							</otherwise>
+						</choice>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					bc =  new org.equinox.api.qrcode.QRComposer();
+					bc.setCrc(new org.equinox.api.qrcode.DefaultCrcCalculator());
+					bc.set('00', '01');
+					bc.set('01', '11');
+					bc.set('02', '1234567890123456');
+					bc.set('03', '1234567890123456');
+				
+					bc.set('26', '00', 'ID.CO.OPTIMA');
+					bc.set('26', '02', originalPayload['parentUsername']);
+					bc.set('26', '03', 'UMI');
+				
+					bc.set('51', '00', 'ID.CO.OPTIMA');
+					bc.set('51', '02', originalPayload['parentUsername']);
+					bc.set('51', '03', 'UMI');
+				
+					bc.set('52', '1110');
+					bc.set('53', '360');
+				
+					bc.set('58', 'IDR');
+				
+					bc.set('59', flowVars['terminalName']);
+					bc.set('60', flowVars['city']);
+					bc.set('61', flowVars['postalCode']);
+				
+					bc.set('62', '07', originalPayload['terminalID']);
+							
+					payload = bc.doCompose();]]>
+				</expression-component>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					toMemberMap = new java.util.HashMap();
+					toMemberMap['qrData']= payload;	
+					responseMap = new java.util.LinkedHashMap();
+					responseMap['qrDetail']= toMemberMap;
+					responseList = new java.util.LinkedList();
+					responseList = [responseMap];
+					confirmMap = new java.util.HashMap();
+					confirmMap['POSInvoiceResponse']= responseList;	
+					confirmMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+					payload = confirmMap;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+	</flow>
+
+</mule>

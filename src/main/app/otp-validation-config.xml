@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+
+	<flow name="otpReqValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['msisdn'] != null]" />
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+			</and-filter>
+		</message-filter>
+
+		<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+
+		<choice>
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice>
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload.'requestAuth')]">
+						<flow-ref name="hashValidation" />
+						<message-filter onUnaccepted="requestValidationFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" />
+						<flow-ref name="otpRequestConfigFlow" />
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="DEBUG" message="[SKIP HASH Validation]" />
+				<set-payload value="#[originalPayload]" />
+				<flow-ref name="otpRequestConfigFlow" />
+			</otherwise>
+		</choice>
+	</flow>
+
+	<flow name="otpConfirmValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['otp'] != null]" />
+				<expression-filter expression="#[originalPayload['ticketID'] != null]" />
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+			</and-filter>
+		</message-filter>
+
+		<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			regMap = new java.util.HashMap();
+			regMap['methodType']= 'GET';			
+			regMap['name']= 'OTPRequestMap';
+			regMap['key']= originalPayload['ticketID'];
+			payload = regMap;]]>
+		</expression-component>
+		<pooled-component>
+			<spring-object bean="CacheProcessor" />
+		</pooled-component>
+
+		<choice>
+			<when>
+				<and-filter>
+					<expression-filter expression="#[payload != null]" />
+					<expression-filter expression="#[payload['otp'] == originalPayload['otp']]" />
+				</and-filter>
+				<expression-transformer
+					expression="#[originalPayload['msisdn']=payload['msisdn'];originalPayload]"
+					doc:name="Expression" />
+				<set-payload value="ALLOWED" />
+			</when>
+			<when expression="#[payload == null]">
+				<set-payload value="OTP_EXPIRED" />
+			</when>
+			<otherwise>
+				<set-payload value="INVALID_OTP" />
+			</otherwise>
+		</choice>
+
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+
+		<choice>
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice>
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload.'requestAuth')]">
+						<flow-ref name="hashValidation" />
+						<message-filter onUnaccepted="requestValidationFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" />
+						<choice>
+							<when expression="#[originalPayload['type'] == 'resetPIN']">
+								<set-variable
+									value="0#[org.apache.commons.lang.StringUtils.substring(originalPayload['msisdn'], 2)]"
+									variableName="fromMember" doc:name="Variable" />
+								<expression-transformer
+									expression="#[originalPayload['fromMember']=flowVars['fromMember'];originalPayload]"
+									doc:name="Expression" />
+								<flow-ref name="resetCredentialConfigFlow" />
+							</when>
+							<otherwise>
+								<flow-ref name="otpConfirmConfigFlow" />
+							</otherwise>
+						</choice>
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="DEBUG" message="[SKIP HASH Validation]" />
+				<set-payload value="#[originalPayload]" />
+				<choice>
+					<when expression="#[originalPayload['type'] == 'resetPIN']">
+						<set-variable
+							value="0#[org.apache.commons.lang.StringUtils.substring(originalPayload['msisdn'], 2)]"
+							variableName="fromMember" doc:name="Variable" />
+						<expression-transformer
+							expression="#[originalPayload['fromMember']=flowVars['fromMember'];originalPayload]"
+							doc:name="Expression" />
+						<flow-ref name="resetCredentialConfigFlow" />
+					</when>
+					<otherwise>
+						<flow-ref name="otpConfirmConfigFlow" />
+					</otherwise>
+				</choice>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

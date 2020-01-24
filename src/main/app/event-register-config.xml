@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:mule-ss="http://www.mulesoft.org/schema/mule/spring-security"
+	xmlns:ss="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/spring-security http://www.mulesoft.org/schema/mule/spring-security/3.1/mule-spring-security.xsd
+http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.0.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/https/current/mule-https.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+
+	<flow name="eventRegisterMainConfigFlow">
+		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
+			doc:name="Variable" />
+		<choice>
+			<when expression="#[originalPayload['eventOrganizer'] != null]">
+				<set-variable value="#[originalPayload['eventOrganizer']]"
+					variableName="username" />
+			</when>
+			<otherwise>
+				<set-variable value="#[originalPayload['parentUsername']]"
+					variableName="username" />
+			</otherwise>
+		</choice>
+		<expression-component doc:name="Expression">
+			<![CDATA[
+				msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+					   <soapenv:Header>
+					      <ser:headerAuth>
+					         <token>' + flowVars['tokennc'] + '</token>
+					      </ser:headerAuth>
+					   </soapenv:Header>
+					   <soapenv:Body>
+					      <ser:createVAEvent>
+					         <amount>' + flowVars['amount'] + '</amount>
+					         <description>' + originalPayload['description'] + '</description>
+					         <eventName>' + originalPayload['eventName'] + '</eventName>
+					         <expiredDateTime>' + originalPayload['expiredDateTime'] + '</expiredDateTime>
+					         <username>' + flowVars['username'] + '</username>
+					      </ser:createVAEvent>
+					   </soapenv:Body>
+					</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<logger level="INFO" message="REQUEST: #[payload]" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="virtualaccounts" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction" value="&quot;createVAEvent&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<set-variable value="#[xpath3('//status/message')]"
+			variableName="status" doc:name="Variable" />
+		<choice doc:name="Choice">
+			<when expression="#[flowVars['status'] == 'PROCESSED']">
+				<set-variable value="#[xpath3('//ticketID')]"
+					variableName="ticket" doc:name="Variable" />
+
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					detailMap = new java.util.HashMap();
+					detailMap['ticketID'] = flowVars['ticket'];
+					detailMap['paymentURL'] = globalConfig['payment.page.url.address'] + flowVars['ticket'];
+			
+					responseList = new java.util.LinkedList();
+					responseList = [detailMap];
+					
+					vaMap = new java.util.HashMap();
+					vaMap['EventResponse']= responseList;	
+					vaMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+					payload = vaMap;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(flowVars['status']);			
+					payload = responseMap;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+	</flow>
+
+
+</mule>

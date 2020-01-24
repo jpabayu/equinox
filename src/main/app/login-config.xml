@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd">
+
+	<flow name="loginConfigFlow">
+		<expression-component doc:name="Expression">
+		<![CDATA[
+			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+   			<soapenv:Header>
+ 		     <ser:headerAuth>
+ 	        <token>' + flowVars['token'] + '</token>
+			   </ser:headerAuth>
+			   </soapenv:Header>
+			   <soapenv:Body>
+			      <ser:validateCredential>
+			         <accessTypeID>4</accessTypeID>
+			         <credential>' + originalPayload['credential'] + '</credential>
+			         <username>' + originalPayload['username'] + '</username>
+			      </ser:validateCredential>
+			   </soapenv:Body>
+			</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="access" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction" value="&quot;validateCredential&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<set-variable value="#[xpath3('//status/message')]"
+			variableName="status" doc:name="Variable" />
+		<choice>
+			<when expression="#[flowVars['status'] == 'VALID']">
+				<set-payload value="#[flowVars['originalPayload']]" />
+				<pooled-component>
+					<spring-object bean="JWTProcessor" />
+				</pooled-component>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['token']=payload;
+					
+					responseList = new java.util.LinkedList();
+					responseList = [responseMap];
+					
+					loginMap = new java.util.HashMap();
+					loginMap['LoginResponse']= responseList;	
+					loginMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+					payload = loginMap;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(flowVars['status']);			
+					payload = responseMap;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
+		<flow-ref name="responseHandlerFlow" />
+	</flow>
+
+</mule>

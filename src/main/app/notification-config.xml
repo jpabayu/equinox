@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
+	xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+
+	<flow name="registerRequestNotificationConfigFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="register.request.notification"
+			doc:name="VM" />
+		<logger level="INFO" message="[Register Request Notification]"
+			doc:name="Logger" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			responseMap = new java.util.HashMap();
+			responseMap['text']= 'Gunakan OTP : ' + payload.otp + ' berlaku 15 menit. JAGA KERAHASIAAN PIN OTP ANDA, JANGAN DISAMPAIKAN KEPADA SIAPAPUN TERMASUK PETUGAS OPTIMA';
+			responseMap['to']= payload.msisdn;
+			responseMap['from']= 'OPTIMA';
+			payload = responseMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="notification.sms" doc:name="JMS" />
+	</flow>
+
+	<flow name="registerNotificationConfigFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="register.notification"
+			doc:name="VM" />
+		<set-variable variableName="email" value="#[payload['email']]"
+			doc:name="Variable" />
+		<set-variable variableName="username" value="#[payload['username']]"
+			doc:name="Variable" />
+		<set-variable variableName="pin" value="#[payload['generatedPIN']]"
+			doc:name="Variable" />
+		<logger level="INFO" message="[Register Email Notification]"
+			doc:name="Logger" />
+		<parse-template location="MemberRegister.tmp" mimeType="text/html"
+			doc:name="Parse Template" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			regMap = new java.util.HashMap();
+			regMap['from']= 'noreply@optima.co.id';
+			regMap['to']= flowVars['email'];
+			regMap['subject']= 'ACCOUNT REGISTRATION';
+			regMap['body']= payload ;
+			payload = regMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="notification.email" doc:name="JMS" />
+	</flow>
+
+	<flow name="partnerRegisterNotificationConfigFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="partner.register.notification"
+			doc:name="VM" />
+		<logger level="INFO" message="[Partner Register Email Notification]"
+			doc:name="Logger" />
+		<set-variable variableName="email" value="#[payload['email']]"
+			doc:name="Variable" />
+		<parse-template location="PartnerRegister.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			regMap = new java.util.HashMap();
+			regMap['from']= 'noreply@optima.co.id';
+			regMap['to']= flowVars['email'];
+			regMap['subject']= 'PARTNER REGISTRATION';
+			regMap['body']= payload;
+			payload = regMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="notification.email" doc:name="JMS" />
+	</flow>
+
+	<flow name="changeCredentialNotificationConfigFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="change.credential.notification"
+			doc:name="VM" />
+		<set-variable value="#[payload['email']]" variableName="email"
+			doc:name="Variable" />
+		<set-variable value="#[payload['ticketID']]"
+			variableName="ticketID" doc:name="Variable" />
+		<logger level="INFO" message="[Change Credential Email Notification]"
+			doc:name="Logger" />
+		<parse-template location="ChangeCredential.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			regMap = new java.util.HashMap();
+			regMap['from']= 'noreply@optima.co.id';
+			regMap['to']= flowVars['email'];
+			regMap['subject']= 'CHANGE CREDENTIAL';
+			regMap['body']= payload;
+			payload = regMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="notification.email" doc:name="JMS" />
+	</flow>
+
+	<flow name="bankAccountRegisterNotificationConfigFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="bank.account.register.notification"
+			doc:name="VM" />
+		<logger level="INFO" message="[Change Credential Email Notification]"
+			doc:name="Logger" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			responseMap = new java.util.HashMap();
+			responseMap['text']= 'Gunakan OTP : ' + payload.otp + ' berlaku 15 menit';
+			responseMap['to']= payload.msisdn;
+			responseMap['from']= 'OPTIMA';
+			payload = responseMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="notification.sms" doc:name="JMS" />
+	</flow>
+
+	<flow name="emailConfirmationNotificationConfigFlow">
+                <vm:inbound-endpoint exchange-pattern="one-way"
+                       	connector-ref="Notification_VM" path="email.confirmation.notification"
+                        doc:name="VM" />
+               	<set-variable value="#[payload['email']]" variableName="email"
+                        doc:name="Variable" />
+               	<set-variable value="#[payload['url']]"
+                       	variableName="url" doc:name="Variable" />
+                <logger level="INFO" message="[ Email Confirmation VA Email Notification]"
+                        doc:name="Logger" />
+                <parse-template location="EmailConfirmationVA.tmp"
+                        mimeType="text/html" doc:name="Parse Template" />
+                <expression-component doc:name="Expression">
+                        <![CDATA[
+                        regMap = new java.util.HashMap();
+                       	regMap['from']= 'noreply@optima.co.id';
+                       	regMap['to']= flowVars['email'];
+                       	regMap['subject']= 'EMAIL CONFIRMATION';
+                        regMap['body']= payload;
+                       	payload = regMap;]]>
+                </expression-component>
+                <jms:outbound-endpoint connector-ref="Active_MQ"
+                       	queue="notification.email" doc:name="JMS" />
+        </flow>
+
+		<flow name="emailReminderVANotificationConfigFlow">
+                <vm:inbound-endpoint exchange-pattern="one-way"
+                       	connector-ref="Notification_VM" path="email.reminder.notification"
+                        doc:name="VM" />
+               	<set-variable value="#[payload['email']]" variableName="email"
+                        doc:name="Variable" />
+                <logger level="INFO" message="[ Email Reminder VA Email Notification]"
+                        doc:name="Logger" />
+                <parse-template location="PaymentCodeReminder.tmp"
+                        mimeType="text/html" doc:name="Parse Template" />
+                <expression-component doc:name="Expression">
+                        <![CDATA[
+                        regMap = new java.util.HashMap();
+                       	regMap['from']= 'noreply@optima.co.id';
+                       	regMap['to']= flowVars['email'];
+                       	regMap['subject']= 'PAYMENT CODE REMINDER';
+                        regMap['body']= payload;
+                       	payload = regMap;]]>
+                </expression-component>
+                <jms:outbound-endpoint connector-ref="Active_MQ"
+                       	queue="notification.email" doc:name="JMS" />
+        </flow>
+	
+	<flow name="verifyEmailRequestNotificationConfigFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="verify.email.request.notification"
+			doc:name="VM" />
+		<set-variable variableName="email" value="#[payload['email']]"
+			doc:name="Variable" />
+		<set-variable value="#[payload['url']]" variableName="url"
+			doc:name="Variable" />
+		<logger level="INFO" message="[Verify Email Request Notification]"
+			doc:name="Logger" />
+		<parse-template location="EmailConfirmationEmoney.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<expression-component doc:name="Expression">
+			<![CDATA[regMap = new java.util.HashMap();
+				regMap['from']= 'noreply@optima.co.id';
+				regMap['to']= flowVars['email'];
+				regMap['subject']= 'VERIFIKASI EMAIL';
+				regMap['body']= payload ;
+			payload = regMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="notification.email" doc:name="JMS" />
+	</flow>		
+</mule>

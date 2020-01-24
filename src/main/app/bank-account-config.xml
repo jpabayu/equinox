@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:mule-ss="http://www.mulesoft.org/schema/mule/spring-security"
+	xmlns:ss="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/spring-security http://www.mulesoft.org/schema/mule/spring-security/3.1/mule-spring-security.xsd
+http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.0.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/https/current/mule-https.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd">
+
+
+	<flow name="bankAccountListFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="BankAccount/Account" allowedMethods="GET" doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
+			doc:name="Expression" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : BANK ACCOUNT LIST Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="bankAccountList" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="bankAccountListValidationFlow" doc:name="Flow Reference" />
+		<set-property value="bankAccountList" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} BANK ACCOUNT LIST Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+<!-- 
+	<flow name="bankAccountRemoveFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="BankAccount/Account/" allowedMethods="DELETE" doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
+			doc:name="Expression" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : BANK ACCOUNT REMOVE Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="bankAccountRemove" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="bankAccountRemoveValidationFlow" doc:name="Flow Reference" />
+		<set-property value="bankAccountRemove" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} BANK ACCOUNT REMOVE Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+-->
+
+	<flow name="bankAccountRegisterConfirmationFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="BankAccount/RegisterAccountRequest" allowedMethods="POST"
+			doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
+			doc:name="Expression" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : BANK ACCOUNT REGISTER CONFIRMATION Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="bankAccountRegisterConfirmation"
+			propertyName="type" doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="bankAccountRegisterConfirmationValidationFlow"
+			doc:name="Flow Reference" />
+		<set-property value="bankAccountRegisterConfirmation"
+			propertyName="type" doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} BANK ACCOUNT REGISTER CONFIRMATION Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="confirmBankAccountRegisterFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="BankAccount/ConfirmRegisterAccount" allowedMethods="POST"
+			doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
+			doc:name="Expression" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : CONFIRM BANK ACCOUNT REGISTER Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="confirmBankAccountRegister"
+			propertyName="type" doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="confirmBankAccountRegisterValidationFlow"
+			doc:name="Flow Reference" />
+		<set-property value="confirmBankAccountRegister"
+			propertyName="type" doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} CONFIRM BANK ACCOUNT REGISTER  Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+	
+	<flow name="registerBankAccountFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="BankAccount/RegisterAccount" allowedMethods="POST"
+			doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
+			doc:name="Expression" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : REGISTER BANK ACCOUNT Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="registerBankAccount"
+			propertyName="type" doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="registerBankAccountValidationFlow"
+			doc:name="Flow Reference" />
+		<set-property value="registerBankAccount"
+			propertyName="type" doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} REGISTER BANK ACCOUNT  Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+</mule>

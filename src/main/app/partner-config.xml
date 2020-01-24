@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:mule-ss="http://www.mulesoft.org/schema/mule/spring-security"
+	xmlns:ss="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd 
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/spring-security http://www.mulesoft.org/schema/mule/spring-security/3.1/mule-spring-security.xsd
+http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.0.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/https/current/mule-https.xsd">
+
+
+	<flow name="registerPartnerFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="Partner/Register" allowedMethods="POST" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<set-variable variableName="globalConfig" value="#[new java.util.HashMap()]"
+			doc:name="Variable" />
+		<set-variable variableName="token" value="${api.ws.header.token.nc}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			regMap = new java.util.HashMap();
+			regMap['methodType']= 'GET';			
+			regMap['name']= 'GlobalConfigMap';
+			regMap['key']= 'global';
+			payload = regMap;]]>
+		</expression-component>
+		<pooled-component>
+			<spring-object bean="CacheProcessor" />
+		</pooled-component>
+		<choice>
+			<when expression="#[payload == null]">
+				<expression-component doc:name="Expression">
+						<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['token'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body/>
+							</soapenv:Envelope>';
+						payload = msg;]]>
+				</expression-component>
+				<set-payload
+					value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]" />
+				<http:request config-ref="HTTP_Request_Configuration"
+					path="globalconfig" method="POST" doc:name="HTTP">
+					<http:request-builder>
+						<http:header headerName="soapaction" value="&quot;loadGlobalConfig&quot;" />
+					</http:request-builder>
+				</http:request>
+				<byte-array-to-string-transformer
+					doc:name="Byte Array to String" />
+				<foreach collection="#[xpath3('//globalConfig', payload, 'NODESET')]"
+					doc:name="For Each">
+					<set-variable variableName="tempHeader"
+						value="#[xpath3('//globalConfig' + [counter] + '/internalName')]"
+						doc:name="Variable" />
+					<set-variable variableName="tempValue"
+						value="#[xpath3('//globalConfig' + [counter] + '/value')]"
+						doc:name="Variable" />
+					<expression-transformer
+						expression="#[globalConfig[tempHeader]=tempValue;globalConfig]"
+						doc:name="Expression" />
+				</foreach>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					regMap = new java.util.HashMap();
+					regMap['methodType']= 'PUT';			
+					regMap['name']= 'GlobalConfigMap';
+					regMap['key']= 'global';
+					regMap['value']= globalConfig;
+					payload = regMap;]]>
+				</expression-component>
+				<pooled-component>
+					<spring-object bean="CacheProcessor" />
+				</pooled-component>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					regMap = new java.util.HashMap();
+					regMap['methodType']= 'GET';			
+					regMap['name']= 'GlobalConfigMap';
+					regMap['key']= 'global';
+					payload = regMap;]]>
+				</expression-component>
+				<pooled-component>
+					<spring-object bean="CacheProcessor" />
+				</pooled-component>
+				<set-variable variableName="globalConfig" value="#[payload]"
+					doc:name="Variable" />
+			</when>
+			<otherwise>
+				<set-variable variableName="globalConfig" value="#[payload]"
+					doc:name="Variable" />
+				<logger level="INFO" message="[USING Cached Global Config]" />
+			</otherwise>
+		</choice>
+
+		<set-variable value="#[globalConfig['api.management.id']]"
+			variableName="apiID" doc:name="Variable" />
+		<set-variable value="#[globalConfig['api.management.name']]"
+			variableName="apiName" doc:name="Variable" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			msg='{
+	        "allowance": 1000,
+	        "rate": 1000,
+	        "per": 60,
+	        "expires": -1,
+	        "quota_max": -1,
+	        "quota_renews": 1505891841,
+	        "quota_remaining": -1,
+	        "quota_renewal_rate": 60,
+	        "access_rights": {
+	            "' + flowVars['apiID'] + '": {
+	                "api_name": "' + flowVars['apiName'] + '",
+	                "api_id": "' + flowVars['apiID'] + '"
+	            }
+	        },
+	        "org_id": "1",
+	        "is_inactive": false,
+	        "alias": "' + payload.email + '"}';
+			payload = msg;]]>
+		</expression-component>
+		<set-property value="#[globalConfig['api.management.auth']]"
+			propertyName="x-tyk-authorization" doc:name="Property" />
+		<set-property value="application/json" propertyName="Content-Type"
+			doc:name="Property" />
+		<http:request method="POST" path="keys/create"
+			config-ref="HTTP_TYK_Request_Configuration" doc:name="HTTP" />
+		<json:json-to-object-transformer
+			returnClass="java.util.HashMap" />
+		<set-variable value="#[globalConfig['partner.secret.auth.access.type.id']]"
+			variableName="secretAuthID" doc:name="Variable" />
+		<set-variable value="#[globalConfig['partner.api.key.access.type.id']]"
+			variableName="APIKeyID" doc:name="Variable" />
+		<set-variable value="#[globalConfig['member.default.pin.access.type.id']]"
+			variableName="pinID" doc:name="Variable" />
+		<set-variable value="#[globalConfig['member.default.web.access.type.id']]"
+			variableName="webID" doc:name="Variable" />
+		<set-variable value="#[globalConfig['partner.group.id']]"
+			variableName="groupID" doc:name="Variable" />
+		<choice>
+			<when expression="#[message.payload.status = 'ok']">
+				<set-variable value="#[message.payload.key]"
+					variableName="APIKey"></set-variable>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+							msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['token'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body>
+							      <ser:registerMembers>
+							         <groupID>' + flowVars['groupID'] + '</groupID>
+							         <name>' + originalPayload['name'] + '</name>
+							         <username>' + originalPayload['username'] + '</username>
+							         <email>' + originalPayload['email'] + '</email>
+							         <msisdn>' + originalPayload['msisdn'] + '</msisdn>
+							      </ser:registerMembers>
+							   </soapenv:Body>
+							</soapenv:Envelope>';
+						payload = msg;]]>
+				</expression-component>
+				<set-payload
+					value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+					doc:name="Set Payload" />
+				<http:request config-ref="HTTP_Request_Configuration"
+					path="members" method="POST" doc:name="HTTP">
+					<http:request-builder>
+						<http:header headerName="soapaction" value="&quot;registerMembers&quot;" />
+					</http:request-builder>
+					<http:success-status-code-validator
+						values="200,400,401,403,404,409,440,444,498,500,503,504,598,599" />
+				</http:request>
+				<byte-array-to-string-transformer
+					doc:name="Byte Array to String" />
+				<set-variable value="#[xpath3('//faultstring')]"
+					variableName="faultString" doc:name="Variable" />
+				<choice>
+					<when expression="#[org.mule.util.StringUtils.isNotEmpty(faultString)]">
+						<expression-component doc:name="Expression">
+							<![CDATA[
+							responseMap = new java.util.HashMap();
+							responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(faultString);			
+							payload = responseMap;]]>
+						</expression-component>
+					</when>
+					<otherwise>
+
+						<!-- ############ REGISTER SECRET AUTH ################## -->
+
+						<expression-component doc:name="Expression">
+						<![CDATA[
+							msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['token'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body>
+							      <ser:createCredential>
+							         <accessTypeID>' + flowVars['secretAuthID'] + '</accessTypeID>
+							         <credential>' + message.id + '</credential>
+							         <username>' + originalPayload['username'] + '</username>
+							      </ser:createCredential>
+							   </soapenv:Body>
+							</soapenv:Envelope>';
+							payload = msg;]]>
+						</expression-component>
+						<set-payload
+							value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+							doc:name="Set Payload" />
+						<http:request config-ref="HTTP_Request_Configuration"
+							path="access" method="POST" doc:name="HTTP">
+							<http:request-builder>
+								<http:header headerName="soapaction"
+									value="&quot;createCredential&quot;" />
+							</http:request-builder>
+						</http:request>
+						<byte-array-to-string-transformer
+							doc:name="Byte Array to String" />
+
+						<!-- ############ REGISTER APIKEY ################## -->
+
+						<expression-component doc:name="Expression">
+						<![CDATA[
+							msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['token'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body>
+							      <ser:createCredential>
+							         <accessTypeID>' + flowVars['APIKeyID'] + '</accessTypeID>
+							         <credential>' + flowVars['APIKey'] + '</credential>
+							         <username>' + originalPayload['username'] + '</username>
+							      </ser:createCredential>
+							   </soapenv:Body>
+							</soapenv:Envelope>';
+							payload = msg;]]>
+						</expression-component>
+						<set-payload
+							value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+							doc:name="Set Payload" />
+						<http:request config-ref="HTTP_Request_Configuration"
+							path="access" method="POST" doc:name="HTTP">
+							<http:request-builder>
+								<http:header headerName="soapaction"
+									value="&quot;createCredential&quot;" />
+							</http:request-builder>
+						</http:request>
+						<byte-array-to-string-transformer
+							doc:name="Byte Array to String" />
+
+
+						<!-- ############ REGISTER PIN ################## -->
+
+						<set-variable
+							value="#[org.equinox.api.process.Utils.getRandomNumberInRange(999999)]"
+							variableName="pin" doc:name="Variable" />
+						<expression-component doc:name="Expression">
+						<![CDATA[
+							msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['token'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body>
+							      <ser:createCredential>
+							         <accessTypeID>' + flowVars['pinID'] + '</accessTypeID>
+							         <credential>' + flowVars['pin'] + '</credential>
+							         <username>' + originalPayload['username'] + '</username>
+							      </ser:createCredential>
+							   </soapenv:Body>
+							</soapenv:Envelope>';
+							payload = msg;]]>
+						</expression-component>
+						<set-payload
+							value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+							doc:name="Set Payload" />
+						<http:request config-ref="HTTP_Request_Configuration"
+							path="access" method="POST" doc:name="HTTP">
+							<http:request-builder>
+								<http:header headerName="soapaction"
+									value="&quot;createCredential&quot;" />
+							</http:request-builder>
+						</http:request>
+						<byte-array-to-string-transformer
+							doc:name="Byte Array to String" />
+
+						<!-- ############ REGISTER WEB PASSWORD ################## -->
+
+						<expression-component doc:name="Expression">
+						<![CDATA[
+							msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['token'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body>
+							      <ser:createCredential>
+							         <accessTypeID>' + flowVars['webID'] + '</accessTypeID>
+							         <credential>' + flowVars['pin'] + '</credential>
+							         <username>' + originalPayload['username'] + '</username>
+							      </ser:createCredential>
+							   </soapenv:Body>
+							</soapenv:Envelope>';
+							payload = msg;]]>
+						</expression-component>
+						<set-payload
+							value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+							doc:name="Set Payload" />
+						<http:request config-ref="HTTP_Request_Configuration"
+							path="access" method="POST" doc:name="HTTP">
+							<http:request-builder>
+								<http:header headerName="soapaction"
+									value="&quot;createCredential&quot;" />
+							</http:request-builder>
+						</http:request>
+						<byte-array-to-string-transformer
+							doc:name="Byte Array to String" />
+
+						<!-- ############ REGISTER VA ################## -->
+
+						<expression-component doc:name="Expression">
+						<![CDATA[
+							msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+								   <soapenv:Header>
+								      <ser:headerAuth>
+								         <token>' + flowVars['token'] + '</token>
+								      </ser:headerAuth>
+								   </soapenv:Header>
+								   <soapenv:Body>
+								      <ser:registerBankVA>
+								         <username>' + originalPayload['username'] + '</username>
+								         <vaBankID>1</vaBankID>
+								         <vaBinID>3</vaBinID>
+								      </ser:registerBankVA>
+								   </soapenv:Body>
+								</soapenv:Envelope>';
+							payload = msg;]]>
+						</expression-component>
+						<set-payload
+							value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+							doc:name="Set Payload" />
+						<http:request config-ref="HTTP_Request_Configuration"
+							path="virtualaccounts" method="POST" doc:name="HTTP">
+							<http:request-builder>
+								<http:header headerName="soapaction" value="&quot;registerBankVA&quot;" />
+							</http:request-builder>
+						</http:request>
+						<byte-array-to-string-transformer
+							doc:name="Byte Array to String" />
+						<set-variable variableName="sandbox" value="${host.sandbox.url}"
+							doc:name="Variable" />
+						<set-variable variableName="dashboard" value="${host.dashboard.url}"
+							doc:name="Variable" />
+						<expression-component doc:name="Expression">
+							<![CDATA[
+							responseMap = new java.util.HashMap();
+							responseMap['APIKey']= flowVars['APIKey'];
+							responseMap['secretAuth']= message.id;
+							responseMap['credential']= flowVars['pin'];
+							responseMap['email']= originalPayload['email'];
+							responseMap['sandbox']= flowVars['sandbox'];
+			                                responseMap['dashboard']= flowVars['dashboard'];
+                            				responseMap['username']= originalPayload['username'];
+							responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+							payload = responseMap;]]>
+						</expression-component>
+						<vm:outbound-endpoint exchange-pattern="one-way"
+							connector-ref="Notification_VM" path="partner.register.notification"
+							doc:name="VM" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('UNKNOWN_ERROR');			
+					payload = responseMap;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
+		<json:object-to-json-transformer />
+	</flow>
+
+	<flow name="retrievePartnerFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="Partner" allowedMethods="GET" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-payload value="#[message.inboundProperties.'http.query.params']"
+			doc:name="Set Payload" />
+		<set-variable variableName="path" value="keys/#[payload.key]"
+			doc:name="Variable" />
+		<set-variable variableName="token" value="${api.ws.header.token}"
+			doc:name="Variable" />
+		<set-variable variableName="globalConfig" value="#[new java.util.HashMap()]"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+				<![CDATA[
+				msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+					   <soapenv:Header>
+					      <ser:headerAuth>
+					         <token>' + flowVars['token'] + '</token>
+					      </ser:headerAuth>
+					   </soapenv:Header>
+					   <soapenv:Body/>
+					</soapenv:Envelope>';
+				payload = msg;]]>
+		</expression-component>
+		<set-payload
+			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="globalconfig" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction" value="&quot;loadGlobalConfig&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<foreach collection="#[xpath3('//globalConfig', payload, 'NODESET')]"
+			doc:name="For Each">
+			<set-variable variableName="tempHeader"
+				value="#[xpath3('//globalConfig' + [counter] + '/internalName')]"
+				doc:name="Variable" />
+			<set-variable variableName="tempValue"
+				value="#[xpath3('//globalConfig' + [counter] + '/value')]" doc:name="Variable" />
+			<expression-transformer
+				expression="#[globalConfig[tempHeader]=tempValue;globalConfig]"
+				doc:name="Expression" />
+		</foreach>
+		<set-property value="#[globalConfig['api.management.auth']]"
+			propertyName="x-tyk-authorization" doc:name="Property" />
+		<set-property value="application/json" propertyName="Content-Type"
+			doc:name="Property" />
+		<http:request method="GET" path="#[path]"
+			config-ref="HTTP_TYK_Request_Configuration" doc:name="HTTP">
+			<http:failure-status-code-validator
+				values="500" />
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+	</flow>
+
+</mule>

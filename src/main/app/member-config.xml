@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:ws="http://www.mulesoft.org/schema/mule/ws"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd 
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd">
+
+	<flow name="memberRegisterProfileFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="Member" allowedMethods="GET,POST" doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
+			doc:name="Expression" />
+		<choice doc:name="Choice">
+			<when expression="#[method == 'GET']">
+				<logger level="INFO"
+					message="[{#[correlationID]} : MEMBER-INQUIRY Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<set-property value="memberInquiry" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+				<flow-ref name="memberInquiryValidationFlow" doc:name="Flow Reference" />
+				<set-property value="memberInquiry" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+				<logger level="INFO"
+					message="[{#[correlationID]} MEMBER-INQUIRY Response = #[payload]]"
+					doc:name="Logger" />
+			</when>
+			<otherwise>
+				<logger level="INFO"
+					message="[{#[correlationID]} : MEMBER-REGISTER Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<set-property value="memberRegister" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+				<flow-ref name="memberRegisterValidationFlow" doc:name="Flow Reference" />
+				<set-property value="memberRegister" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+				<logger level="INFO"
+					message="[{#[correlationID]} MEMBER-REGISTER Response = #[payload]]"
+					doc:name="Logger" />
+			</otherwise>
+		</choice>
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="memberRegisterReqFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="Member/RegisterRequest" allowedMethods="POST" doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
+			doc:name="Expression" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : MEMBER-REGISTER-REQ Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="memberRegisterRequest" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="memberRegisterReqValidationFlow" doc:name="Flow Reference" />
+		<set-property value="memberRegisterRequest" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} MEMBER-REGISTER-REQ Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="memberKYCReqFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="Member/KYCRequest" allowedMethods="POST" doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable variableName="originalPayload" value="#[new java.util.HashMap()]"
+			doc:name="Variable" />
+		<foreach collection="#[message.inboundAttachments]" doc:name="For Each">
+			<choice doc:name="Choice">
+				<when expression="#[flowVars.key == 'file1']">
+					<set-variable
+						value="#[org.apache.commons.lang.StringUtils.substringAfter(payload.getContentType(),'/')]"
+						variableName="fileExtension" doc:name="Variable" />
+					<expression-component doc:name="Expression">
+						<![CDATA[
+						regMap = new java.util.HashMap();
+						regMap['content']= payload.getContent();			
+						regMap['fileName']= '1-' + message.id;
+						regMap['fileExtension']= flowVars.fileExtension;
+						payload = regMap;]]>
+					</expression-component>
+					<expression-transformer
+						expression="#[originalPayload['file1']=payload;originalPayload]"
+						doc:name="Expression" />
+				</when>
+				<when expression="#[flowVars.key == 'file2']">
+					<set-variable
+						value="#[org.apache.commons.lang.StringUtils.substringAfter(payload.getContentType(),'/')]"
+						variableName="fileExtension" doc:name="Variable" />
+					<expression-component doc:name="Expression">
+						<![CDATA[
+						regMap = new java.util.HashMap();
+						regMap['content']= payload.getContent();			
+						regMap['fileName']= '2-' + message.id;
+						regMap['fileExtension']= flowVars.fileExtension;
+						payload = regMap;]]>
+					</expression-component>
+					<expression-transformer
+						expression="#[originalPayload['file2']=payload;originalPayload]"
+						doc:name="Expression" />
+				</when>
+				<when expression="#[flowVars.key == 'file3']">
+					<set-variable
+						value="#[org.apache.commons.lang.StringUtils.substringAfter(payload.getContentType(),'/')]"
+						variableName="fileExtension" doc:name="Variable" />
+					<expression-component doc:name="Expression">
+						<![CDATA[
+						regMap = new java.util.HashMap();
+						regMap['content']= payload.getContent();			
+						regMap['fileName']= '3-' + message.id;
+						regMap['fileExtension']= flowVars.fileExtension;
+						payload = regMap;]]>
+					</expression-component>
+					<expression-transformer
+						expression="#[originalPayload['file3']=payload;originalPayload]"
+						doc:name="Expression" />
+				</when>
+				<otherwise>
+					<expression-transformer
+						expression="#[originalPayload[flowVars.key]=payload.getContent();originalPayload]"
+						doc:name="Expression" />
+				</otherwise>
+			</choice>
+		</foreach>
+		<set-payload value="#[originalPayload]" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<flow-ref name="memberKYCRequestValidationFlow" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="memberVerifyEmailRequestFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="Member/VerifyEmailRequest" allowedMethods="POST" doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
+			doc:name="Expression" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VERIFY EMAIL REQUEST Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="verifyEmailRequest" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="memberVerifyEmailRequestValidationFlow"
+			doc:name="Flow Reference" />
+		<set-property value="verifyEmailRequest" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} VERIFY EMAIL REQUEST Response = #[payload]]"
+			doc:name="Logger" />
+
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="memberVerifyEmailConfirmFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="Member/VerifyEmailConfirm" allowedMethods="GET" doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
+			doc:name="Expression" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VERIFY EMAIL CONFIRM Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="verifyEmailConfirm" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="memberVerifyEmailConfirmValidationFlow"
+			doc:name="Flow Reference" />
+		<set-property value="verifyEmailConfirm" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} VERIFY EMAIL CONFIRM Response = #[payload]]"
+			doc:name="Logger" />
+
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+</mule>

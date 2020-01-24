@@ -1,0 +1,586 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:mule-ss="http://www.mulesoft.org/schema/mule/spring-security"
+	xmlns:ss="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/spring-security http://www.mulesoft.org/schema/mule/spring-security/3.1/mule-spring-security.xsd
+http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.0.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/https/current/mule-https.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+
+	<spring:beans>
+		<spring:bean id="VAobjectStore"
+			class="org.mule.util.store.SimpleMemoryObjectStore" />
+	</spring:beans>
+
+	<flow name="eventGetRegisterFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Event" allowedMethods="GET,POST,DELETE"
+			doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<choice doc:name="Choice">
+			<when expression="#[method == 'GET']">
+				<logger level="INFO"
+					message="[{#[correlationID]} : EVENT-RETRIEVE Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<set-property value="EventRetrieve" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+				<flow-ref name="eventRetrieveValidationFlow" doc:name="Flow Reference" />
+				<set-property value="EventRetrieve" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+				<logger level="INFO"
+					message="[{#[correlationID]} : EVENT-RETRIEVE Response = #[payload]]"
+					doc:name="Logger" />
+			</when>
+			<when expression="#[method == 'DELETE']">
+				<logger level="INFO"
+					message="[{#[correlationID]} : EVENT-DELETE Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<set-property value="EventDelete" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+				<flow-ref name="eventDeleteValidationFlow" doc:name="Flow Reference" />
+				<set-property value="EventDelete" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+				<logger level="INFO"
+					message="[{#[correlationID]} : EVENT-DELETE Response = #[payload]]"
+					doc:name="Logger" />
+			</when>
+			<otherwise>
+				<logger level="INFO"
+					message="[{#[correlationID]} : EVENT-REGISTER Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<set-property value="EventRegister" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+				<flow-ref name="eventRegisterValidationFlow" doc:name="Flow Reference" />
+				<set-property value="EventRegister" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+				<logger level="INFO"
+					message="[{#[correlationID]} : EVENT-REGISTER Response = #[payload]]"
+					doc:name="Logger" />
+			</otherwise>
+		</choice>
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="vaGetRequestFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Billing" allowedMethods="GET,POST" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<choice doc:name="Choice">
+			<when expression="#[method == 'GET']">
+				<logger level="INFO"
+					message="[{#[correlationID]} : VA-RETRIEVE Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<set-property value="VARetrieve" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+				<flow-ref name="vaRetrieveValidationFlow" doc:name="Flow Reference" />
+				<set-property value="VARetrieve" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+				<logger level="INFO"
+					message="[{#[correlationID]} : VA-RETRIEVE Response = #[payload]]"
+					doc:name="Logger" />
+			</when>
+			<otherwise>
+				<logger level="INFO"
+					message="[{#[correlationID]} : VA-REGISTER Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<set-property value="VARegister" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+				<flow-ref name="vaRequestValidationFlow" doc:name="Flow Reference" />
+				<set-property value="VARegister" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+				<logger level="INFO"
+					message="[{#[correlationID]} : VA-REGISTER Response = #[payload]]"
+					doc:name="Logger" />
+			</otherwise>
+		</choice>
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="vaUpdateDeleteFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Billing/*" allowedMethods="PUT,DELETE"
+			doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<expression-transformer
+			expression="#[payload['paymentCode']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');payload]"
+			doc:name="Expression" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<choice doc:name="Choice">
+			<when expression="#[method == 'PUT']">
+				<logger level="INFO"
+					message="[{#[correlationID]} : VA-UPDATE Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<set-property value="VAUpdate" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+				<flow-ref name="vaUpdateValidationFlow" doc:name="Flow Reference" />
+				<set-property value="VAUpdate" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+				<logger level="INFO"
+					message="[{#[correlationID]} : VA-UPDATE Response = #[payload]]"
+					doc:name="Logger" />
+			</when>
+			<otherwise>
+				<logger level="INFO"
+					message="[{#[correlationID]} : VA-DELETE Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<set-property value="VADelete" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+				<flow-ref name="vaDeleteValidationFlow" doc:name="Flow Reference" />
+				<set-property value="VADelete" propertyName="type"
+					doc:name="Property" />
+				<set-property value="#[correlationID]" propertyName="messageID"
+					doc:name="Property" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+				<logger level="INFO"
+					message="[{#[correlationID]} : VA-DELETE Response = #[payload]]"
+					doc:name="Logger" />
+			</otherwise>
+		</choice>
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="vaGetListBankFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/GetBankID" allowedMethods="GET" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<set-property value="VAGetBank" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="vaGateBankValidationFlow" doc:name="Flow Reference" />
+		<set-property value="VAGetBank" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="vaGetListBillingFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Billing/List" allowedMethods="GET" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-LIST Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="VAList" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="vaGetListBillingValidationFlow" doc:name="Flow Reference" />
+		<set-property value="VAList" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-LIST Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="vaPaymentBillingFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Billing/Payment" allowedMethods="POST"
+			doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-PAYMENT Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="VAPayment" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="vaPaymentBillingValidationFlow" doc:name="Flow Reference" />
+		<set-property value="VAPayment" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-PAYMENT Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="vaReverseBillingFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Billing/Reverse" allowedMethods="POST"
+			doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-REVERSE Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="VAReverse" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="vaReverseBillingValidationFlow" doc:name="Flow Reference" />
+		<set-property value="VAReverse" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-REVERSE Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="eventGetListBillingFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Event/List" allowedMethods="GET" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : EVENT-LIST Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="EventList" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="eventGetListBillingValidationFlow" doc:name="Flow Reference" />
+		<set-property value="EventList" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : EVENT-LIST Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="vaBillingStatusFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Report/Status" allowedMethods="GET" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-BILLING-STATUS Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="VaReport" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="vaBillingStatusValidationFlow" doc:name="Flow Reference" />
+		<set-property value="VaReport" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-BILLING-STATUS Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="vaReportBillingFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Report" allowedMethods="GET" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-REPORT Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="VaReport" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="vaReportBillingValidationFlow" doc:name="Flow Reference" />
+		<set-property value="VaReport" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-REPORT Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+
+	<flow name="vaCreateBulkRequestFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Billing/Bulk" allowedMethods="POST" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable variableName="originalPayload" value="#[new java.util.HashMap()]"
+			doc:name="Variable" />
+		
+		<async>
+			<flow-ref name="vaCreateBulkValidationFlow" />
+		</async>
+		<expression-component doc:name="Expression">
+			<![CDATA[respMap = new java.util.HashMap();
+				respMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+			payload = respMap;]]>
+		</expression-component>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+	
+	<flow name="vaGetListBillingByEventFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="PaymentCollection/Billing/ByEvent" allowedMethods="GET" doc:name="HTTP" />
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable value="#[payload]" variableName="originalPayload"
+			doc:name="Variable" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-LIST-BY-EVENT Request = #[originalPayload]]"
+			doc:name="Logger" />
+		<set-property value="VAListByEvent" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.request" connector-ref="GrayLog_VM" doc:name="VM" />
+		<flow-ref name="vaGetListBillingByEventValidationFlow" doc:name="Flow Reference" />
+		<set-property value="VAListByEvent" propertyName="type"
+			doc:name="Property" />
+		<set-property value="#[correlationID]" propertyName="messageID"
+			doc:name="Property" />
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : VA-LIST-BY-EVENT Response = #[payload]]"
+			doc:name="Logger" />
+		<exception-strategy ref="sessionException"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+</mule>

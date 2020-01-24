@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:udp="http://www.mulesoft.org/schema/mule/udp"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:https="http://www.mulesoft.org/schema/mule/https"
+	xmlns:tcp="http://www.mulesoft.org/schema/mule/tcp" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/https/current/mule-https.xsd
+http://www.mulesoft.org/schema/mule/tcp http://www.mulesoft.org/schema/mule/tcp/current/mule-tcp.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/udp http://www.mulesoft.org/schema/mule/udp/current/mule-udp.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd">
+
+	<context:property-placeholder location="${mule.env}.properties" />
+
+	<spring:beans>
+		<spring:import resource="classpath:app-context.xml" />
+		<spring:import resource="classpath:hazelcast-context.xml" />
+		<spring:bean id="objectStore"
+			class="org.mule.util.store.SimpleMemoryObjectStore" />
+	</spring:beans>
+
+	<configuration>
+		<default-threading-profile maxThreadsActive="50" />
+	</configuration>
+
+	<jms:activemq-connector name="Active_MQ"
+		specification="1.1" brokerURL="${api.jms.broker.url}"
+		disableTemporaryReplyToDestinations="true" validateConnections="true"
+		doc:name="Active MQ" />
+
+	<http:listener-config name="HTTP_Credential_Listener_Configuration"
+		host="0.0.0.0" port="8672" basePath="Credential" doc:name="HTTP Listener Configuration" />
+
+	<http:listener-config name="HTTP_Listener_Configuration"
+		host="0.0.0.0" port="8670" basePath="Host/Optima" doc:name="HTTP Listener Configuration" />
+
+	<http:request-config name="HTTP_Request_Configuration"
+		host="${api.core.ws.host}" port="8081" basePath="bellatrix/host/services/ws"
+		doc:name="HTTP Request Configuration" />
+
+
+	<http:request-config name="HTTP_TYK_Request_Configuration"
+		host="${api.tyk.host}" port="${api.tyk.port}" basePath="tyk"
+		doc:name="HTTP TYK Request Configuration" />
+
+	<vm:connector name="Notification_VM" validateConnections="true"
+		doc:name="VM" />
+	<vm:endpoint exchange-pattern="one-way" path="notification"
+		connector-ref="Notification_VM" name="NotificationVM" doc:name="VM" />
+
+	<vm:connector name="GrayLog_VM" validateConnections="true"
+		doc:name="VM" />
+
+	<vm:connector name="File_VM" validateConnections="true"
+		doc:name="VM" />
+
+	<udp:connector name="GrayLogUDP" validateConnections="true"
+		keepSendSocketOpen="true" doc:name="UDP" />
+
+	<file:connector name="File" outputPattern="#[flowVars.fileName]"
+		doc:name="File" />
+
+	<spring:beans>
+		<spring:bean id="Bean" name="NonNullMapper"
+			class="org.codehaus.jackson.map.ObjectMapper">
+			<spring:property name="SerializationInclusion">
+				<spring:value
+					type="org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion">NON_NULL</spring:value>
+			</spring:property>
+		</spring:bean>
+	</spring:beans>
+
+</mule>

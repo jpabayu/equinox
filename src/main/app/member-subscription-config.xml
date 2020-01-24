@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd">
+
+	<flow name="memberSubscriptionConfigFlow">
+		<set-variable value="#[java.util.UUID.randomUUID().toString()]"
+			variableName="ticketID" doc:name="Variable" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			regMap = new java.util.HashMap();
+			regMap['parentID']= originalPayload['parentID'];
+			regMap['username']= originalPayload['fromMember'];
+			payload = regMap;]]>
+		</expression-component>
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			regMap = new java.util.HashMap();
+			regMap['methodType']= 'PUT';			
+			regMap['name']= 'SubscribeTokenMap';
+			regMap['key']= flowVars['ticketID'];
+			regMap['value']= payload;
+			payload = regMap;]]>
+		</expression-component>
+		<pooled-component>
+			<spring-object bean="CacheProcessor" />
+		</pooled-component>
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			memberMap = new java.util.HashMap();
+			memberMap['subscribeURL']= globalConfig['member.subscribe.url'] + '?ticketID=' + flowVars['ticketID'];
+			
+			responseMap = new java.util.LinkedHashMap();
+			responseMap['member']= memberMap;
+			
+			responseList = new java.util.LinkedList();
+			responseList = [responseMap];
+	
+			balinqMap = new java.util.HashMap();
+			balinqMap['MemberSubscriptionResponse']= responseList;	
+			balinqMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+			payload = balinqMap;]]>
+		</expression-component>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+	</flow>
+
+</mule>

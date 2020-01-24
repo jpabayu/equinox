@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml"
+	xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd">
+
+	<flow name="loadBankAccountConfigFlow">
+		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+		<![CDATA[
+			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+				   <soapenv:Header>
+				      <ser:headerAuth>
+				         <token>' + flowVars['tokennc'] + '</token>
+				      </ser:headerAuth>
+				   </soapenv:Header>
+				   <soapenv:Body>
+				      <ser:loadAccountTransfer>
+				         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
+				         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
+				         <username>' + originalPayload['fromMember'] + '</username>
+				      </ser:loadAccountTransfer>
+				   </soapenv:Body>
+				</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="interbanks" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction"
+					value="&quot;loadAccountTransfer&quot;" />
+			</http:request-builder>
+		</http:request>
+		<mulexml:dom-to-xml-transformer
+			doc:name="DOM to XML" />
+		<set-variable variableName="bankMaps"
+			value="#[new java.util.LinkedList()]" doc:name="Variable" />
+		<foreach collection="#[xpath3('//accountTransfer', payload, 'NODESET')]"
+			doc:name="For Each">
+			<set-variable variableName="accountPayload"
+				value="#[new java.util.LinkedHashMap()]" doc:name="Variable" />
+			<set-variable
+				value="#[xpath3('//accountTransfer' + [counter]  + '/accountName')]"
+				variableName="accountName" doc:name="Variable" />
+			<set-variable
+				value="#[xpath3('//accountTransfer' + [counter]  + '/accountNo')]"
+				variableName="accountNo" doc:name="Variable" />
+			<set-variable
+				value="#[xpath3('//accountTransfer' + [counter]  + '/bankCode')]"
+				variableName="bankCode" doc:name="Variable" />
+			<set-variable
+				value="#[xpath3('//accountTransfer' + [counter]  + '/bankName')]"
+				variableName="bankName" doc:name="Variable" />
+			<set-variable
+				value="#[xpath3('//accountTransfer' + [counter]  + '/bankID')]"
+				variableName="bankID" doc:name="Variable" />
+			<set-variable
+				value="#[xpath3('//accountTransfer' + [counter]  + '/description')]"
+				variableName="description" doc:name="Variable" />
+			<set-variable value="#[xpath3('//accountTransfer' + [counter]  + '/id')]"
+				variableName="accountID" doc:name="Variable" />
+			<set-variable
+				value="#[xpath3('//accountTransfer' + [counter]  + '/bankCode')]"
+				variableName="bankCode" doc:name="Variable" />
+			<set-variable
+				value="#[xpath3('//accountTransfer' + [counter]  + '/bankName')]"
+				variableName="bankName" doc:name="Variable" />
+
+			<expression-transformer
+				expression="#[accountPayload['accountName']=flowVars.accountName;accountPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[accountPayload['accountNo']=flowVars.accountNo;accountPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[accountPayload['accountDescription']=flowVars.description;accountPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[accountPayload['accountID']=flowVars.accountID;accountPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[accountPayload['bankCode']=flowVars.bankCode;accountPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[accountPayload['bankName']=flowVars.bankName;accountPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[accountPayload['bankID']=flowVars.bankID;accountPayload]"
+				doc:name="Expression" />
+
+			<expression-component doc:name="Expression">
+				<![CDATA[bankMaps.add(accountPayload);]]>
+			</expression-component>
+		</foreach>
+
+		<choice doc:name="Choice">
+			<when expression="#[flowVars['status'] == 'PROCESSED']">
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');	
+					responseMap['BankAccountListResponse']=flowVars['bankMaps'];		
+					payload = responseMap;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(flowVars['status']);			
+					payload = responseMap;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+	</flow>
+
+</mule>

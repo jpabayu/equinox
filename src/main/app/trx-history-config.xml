@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd">
+
+	<flow name="trxHistoryConfigFlow">
+		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+		<![CDATA[
+			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+			   <soapenv:Header>
+			      <ser:headerAuth>
+			         <token>' + flowVars['tokennc'] + '</token>
+			      </ser:headerAuth>
+			   </soapenv:Header>
+			   <soapenv:Body>
+			      <ser:loadTransactionHistory>
+			         <accountID>' + originalPayload['accountID'] + '</accountID>
+			         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
+			         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
+			         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
+			         <toDate>' + originalPayload['toDate'] + '</toDate>
+			         <username>' + originalPayload['fromMember'] + '</username>
+			      </ser:loadTransactionHistory>
+			   </soapenv:Body>
+			</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="accounts" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction"
+					value="&quot;loadTransactionHistory&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<set-variable variableName="trxMaps"
+			value="#[new java.util.LinkedList()]" doc:name="Variable" />
+		<set-variable variableName="forPayload" value="#[payload]"
+			doc:name="Variable" />
+
+		<foreach collection="#[xpath3('//transfers', forPayload, 'NODESET')]"
+			doc:name="For Each">
+			<set-variable variableName="trxPayload"
+				value="#[new java.util.LinkedHashMap()]" doc:name="Variable" />
+			<set-variable variableName="fromMemberFields" value="#[new java.util.HashMap()]"
+				doc:name="Variable" />
+			<set-variable variableName="toMemberFields" value="#[new java.util.HashMap()]"
+				doc:name="Variable" />
+			<set-variable variableName="reverseByFields" value="#[new java.util.HashMap()]"
+				doc:name="Variable" />
+			<set-variable variableName="transferTypeFields" value="#[new java.util.HashMap()]"
+				doc:name="Variable" />
+			<set-variable variableName="trxCustomFields" value="#[new java.util.HashMap()]"
+				doc:name="Variable" />
+
+			<set-variable variableName="amount"
+				value="#[xpath3('//transfers' + [counter] + '/amount')]" doc:name="Variable" />
+			<set-variable variableName="traceNumber"
+				value="#[xpath3('//transfers' + [counter] + '/traceNumber')]"
+				doc:name="Variable" />
+			<set-variable variableName="transactionNumber"
+				value="#[xpath3('//transfers' + [counter] + '/transactionNumber')]"
+				doc:name="Variable" />
+			<set-variable variableName="transactionDate"
+				value="#[xpath3('//transfers' + [counter] + '/transactionDate')]"
+				doc:name="Variable" />
+			<set-variable variableName="formattedTransactionDate"
+				value="#[xpath3('//transfers' + [counter] + '/formattedTransactionDate')]"
+				doc:name="Variable" />
+			<set-variable variableName="transactionState"
+				value="#[xpath3('//transfers' + [counter] + '/transactionState')]"
+				doc:name="Variable" />
+			<set-variable variableName="description"
+				value="#[xpath3('//transfers' + [counter] + '/description')]"
+				doc:name="Variable" />
+
+			<set-variable variableName="fromID"
+				value="#[xpath3('//transfers' + [counter] + '/fromMember/id')]"
+				doc:name="Variable" />
+			<set-variable variableName="fromName"
+				value="#[xpath3('//transfers' + [counter] + '/fromMember/name')]"
+				doc:name="Variable" />
+			<set-variable variableName="fromUsername"
+				value="#[xpath3('//transfers' + [counter] + '/fromMember/username')]"
+				doc:name="Variable" />
+
+			<set-variable variableName="toID"
+				value="#[xpath3('//transfers' + [counter] + '/toMember/id')]"
+				doc:name="Variable" />
+			<set-variable variableName="toName"
+				value="#[xpath3('//transfers' + [counter] + '/toMember/name')]"
+				doc:name="Variable" />
+			<set-variable variableName="toUsername"
+				value="#[xpath3('//transfers' + [counter] + '/toMember/username')]"
+				doc:name="Variable" />
+
+			<set-variable variableName="reverseByID"
+				value="#[xpath3('//transfers' + [counter] + '/reverseBy/id')]"
+				doc:name="Variable" />
+			<set-variable variableName="reverseByName"
+				value="#[xpath3('//transfers' + [counter] + '/reverseBy/name')]"
+				doc:name="Variable" />
+			<set-variable variableName="reverseByUsername"
+				value="#[xpath3('//transfers' + [counter] + '/reverseBy/username')]"
+				doc:name="Variable" />
+			<set-variable variableName="transferTypeName"
+				value="#[xpath3('//transfers' + [counter] + '/transferType/name')]"
+				doc:name="Variable" />
+
+			<expression-transformer
+				expression="#[trxPayload['amount']=flowVars.amount;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['traceNumber']=flowVars.traceNumber;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['transactionNumber']=flowVars.transactionNumber;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['transactionDate']=flowVars.transactionDate;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['formattedTransactionDate']=flowVars.formattedTransactionDate;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['transactionState']=flowVars.transactionState;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['description']=flowVars.description;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[transferTypeFields['name']=flowVars.transferTypeName;transferTypeFields]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['transactionType']=flowVars.transferTypeFields;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[fromMemberFields['name']=flowVars.fromName;fromMemberFields]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[fromMemberFields['username']=flowVars.fromUsername;fromMemberFields]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[toMemberFields['name']=flowVars.toName;toMemberFields]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[toMemberFields['username']=flowVars.toUsername;toMemberFields]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[reverseByFields['name']=flowVars.reverseByName;reverseByFields]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[reverseByFields['username']=flowVars.reverseByUsername;reverseByFields]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['sourceAccount']=flowVars.fromMemberFields;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['destinationAccount']=flowVars.toMemberFields;trxPayload]"
+				doc:name="Expression" />
+			<expression-transformer
+				expression="#[trxPayload['reverseBy']=flowVars.reverseByFields;trxPayload]"
+				doc:name="Expression" />
+
+			<expression-component doc:name="Expression">
+				<![CDATA[trxMaps.add(trxPayload);]]>
+			</expression-component>
+		</foreach>
+		<choice>
+			<when expression="#[xpath3('//status/message') == 'PROCESSED']">
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+					responseMap['TransactionHistoryResponse']=flowVars['trxMaps'];	
+					payload = responseMap;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('NO_TRANSACTION');			
+					payload = responseMap;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+	</flow>
+
+</mule>

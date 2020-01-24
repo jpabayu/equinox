@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd">
+
+	<flow name="posPaymentConfigFlow">
+		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+               dc =  new org.equinox.api.qrcode.QRDecomposer(originalPayload.data);
+			   dc.setCrc(new org.equinox.api.qrcode.DefaultCrcCalculator());
+               payload = dc;]]>
+		</expression-component>
+		<set-variable value="#[payload.doDecompose()]"
+			variableName="dcMap" />
+		<message-filter onUnaccepted="crcValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload.isValidCRC(dcMap.get('63')) == 'true']" />
+		</message-filter>
+		<set-variable value="#[payload.getTagValue(dcMap.get('62'),'07')]"
+			variableName="terminalID" />
+		<set-variable value="#[payload.getTagValue(dcMap.get('51'),'02')]"
+			variableName="merchantID" />
+		<set-variable value="#[payload.getTagValue(dcMap.get('62'),'01')]"
+			variableName="ticketID" />
+		<set-variable
+			value="#[ticketID = (payload.getTagValue(dcMap.get('62'),'01') == null) ? '' : payload.getTagValue(dcMap.get('62'),'01')]"
+			variableName="ticketID" doc:name="Variable" />
+		<set-variable
+			value="#[amount = (originalPayload.amount == null) ? '0' : originalPayload.amount]"
+			variableName="amount" doc:name="Variable" />
+		<expression-component doc:name="Expression">
+		<![CDATA[
+			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+				   <soapenv:Header>
+				      <ser:headerAuth>
+				         <token>' + flowVars['tokennc'] + '</token>
+				      </ser:headerAuth>
+				   </soapenv:Header>
+				   <soapenv:Body>
+				      <ser:posPayment>
+				         <amount>' + flowVars.amount + '</amount>
+				         <description>POS Payment</description>
+				         <fromMember>' + originalPayload['fromMember'] + '</fromMember>
+				         <originator>' + originalPayload['parentUsername'] + '</originator>
+				         <terminalID>' + flowVars.terminalID + '</terminalID>
+				         <toMember>' + flowVars.merchantID + '</toMember>
+				         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+				         <ticketID>' + flowVars.ticketID + '</ticketID>
+				      </ser:posPayment>
+				   </soapenv:Body>
+				</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<logger level="INFO" message="#[payload]" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="pos" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction" value="&quot;posPayment&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<set-variable value="#[xpath3('//status/message')]"
+			variableName="status" doc:name="Variable" />
+		<set-variable value="#[xpath3('//traceNumber')]"
+			variableName="traceNumber" doc:name="Variable" />
+		<set-variable value="#[xpath3('//transactionNumber')]"
+			variableName="transactionNumber" doc:name="Variable" />
+		<set-variable value="#[xpath3('//fromMember/name')]"
+			variableName="fromName" doc:name="Variable" />
+		<set-variable value="#[xpath3('//fromMember/username')]"
+			variableName="fromUsername" doc:name="Variable" />
+		<set-variable value="#[xpath3('//toMember/name')]"
+			variableName="toName" doc:name="Variable" />
+		<set-variable value="#[xpath3('//toMember/username')]"
+			variableName="toUsername" doc:name="Variable" />
+		<set-variable value="#[xpath3('//transferType/name')]"
+			variableName="trxType" doc:name="Variable" />
+		<set-variable value="#[xpath3('//terminal/id')]"
+			variableName="terminalID" doc:name="Variable" />
+		<set-variable value="#[xpath3('//terminal/name')]"
+			variableName="terminalName" doc:name="Variable" />
+		<set-variable value="#[xpath3('//terminal/address')]"
+			variableName="terminalAddress" doc:name="Variable" />
+		<set-variable value="#[xpath3('//amount')]" variableName="amount"
+			doc:name="Variable" />
+		<set-variable value="#[xpath3('//totalFees')]"
+			variableName="totalFees" doc:name="Variable" />
+		<set-variable value="#[xpath3('//finalAmount')]"
+			variableName="finalAmount" doc:name="Variable" />
+		<choice doc:name="Choice">
+			<when expression="#[flowVars['status'] == 'PROCESSED']">
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					fromMemberMap = new java.util.HashMap();
+					fromMemberMap['fromName']= flowVars['fromName'];	
+					fromMemberMap['fromUsername']= flowVars['fromUsername'];	
+
+					toMemberMap = new java.util.HashMap();
+					toMemberMap['merchantName']= flowVars['toName'];	
+					toMemberMap['merchantID']= flowVars['toUsername'];	
+					
+					trxTypeMap = new java.util.HashMap();
+					trxTypeMap['name']= flowVars['trxType'];	
+					
+					terminalMap = new java.util.HashMap();
+					terminalMap['id']= flowVars['terminalID'];	
+					terminalMap['name']= flowVars['terminalName'];	
+					terminalMap['address']= flowVars['terminalAddress'];	
+
+					trxAmountMap = new java.util.HashMap();
+					trxAmountMap['amount']= flowVars['amount'];	
+					trxAmountMap['totalFees']= flowVars['totalFees'];	
+					trxAmountMap['finalAmount']= flowVars['finalAmount'];	
+
+					responseMap = new java.util.LinkedHashMap();
+					responseMap['transactionType']= trxTypeMap;
+					responseMap['traceNumber']= flowVars['traceNumber'];	
+					responseMap['transactionNumber']= flowVars['transactionNumber'];	
+					responseMap['sourceAccount']= fromMemberMap;
+					responseMap['merchantDetail']= toMemberMap;
+					responseMap['terminal']= terminalMap;
+					responseMap['transactionAmount']= trxAmountMap;
+					
+					responseList = new java.util.LinkedList();
+					responseList = [responseMap];
+					
+					confirmMap = new java.util.HashMap();
+					confirmMap['POSPaymentResponse']= responseList;	
+					confirmMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+					payload = confirmMap;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(flowVars['status']);;			
+					payload = responseMap;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+	</flow>
+
+</mule>

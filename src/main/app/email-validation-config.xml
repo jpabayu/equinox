@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<flow name="emailValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<expression-filter expression="#[originalPayload['email'] != null]" />
+		</message-filter>
+		<choice>
+			<when expression="#[originalPayload['url'] != null]">
+				<logger level="INFO"
+					message="[{#[correlationID]} : SENDING-EMAIL CONFIRMATION Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<flow-ref name="emailConfirmationVA" doc:name="Flow Reference" />
+			</when>
+			<otherwise>
+				<logger level="INFO"
+					message="[{#[correlationID]} : SENDING-EMAIL REMINDER Request = #[originalPayload]]"
+					doc:name="Logger" />
+				<flow-ref name="emailReminderVA" doc:name="Flow Reference" />
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

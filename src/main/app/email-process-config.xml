@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<flow name="emailConfirmationVA">
+		<expression-component doc:name="Expression">
+			<![CDATA[responseMap = new java.util.HashMap();
+				responseMap['email']= originalPayload['email'];
+				responseMap['url']= originalPayload['url'];
+				responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+			payload = responseMap;]]>
+		</expression-component>
+		<vm:outbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="email.confirmation.notification"
+			doc:name="VM" />
+		<expression-component doc:name="Expression">
+			<![CDATA[responseMap = new java.util.HashMap();
+				responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+			payload = responseMap;]]>
+		</expression-component>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+	</flow>
+
+	<flow name="emailReminderVA">
+		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+		<![CDATA[
+			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+				   <soapenv:Header>
+				      <ser:headerAuth>
+				         <token>' + flowVars['tokennc'] + '</token>
+				      </ser:headerAuth>
+				   </soapenv:Header>
+				   <soapenv:Body>
+				      <ser:inquiryVA>
+				         <paymentCode>' + originalPayload['paymentCode'] + '</paymentCode>
+				      </ser:inquiryVA>
+				   </soapenv:Body>
+				</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="virtualaccounts" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction" value="&quot;inquiryVA&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<set-variable value="#[xpath3('//status/message')]"
+			variableName="status" doc:name="Variable" />
+		<choice doc:name="Choice">
+			<when expression="#[flowVars['status'] == 'PROCESSED']">
+				<set-variable value="#[xpath3('//originator/name')]"
+					variableName="to" doc:name="Variable" />
+				<set-variable value="#[xpath3('//amount')]"
+					variableName="amount" doc:name="Variable" />
+				<set-variable value="#[xpath3('//name')]" variableName="billingName"
+					doc:name="Variable" />
+				<choice>
+					<when expression="#[xpath3('//expiredAt') == '']">
+						<set-variable value="-" variableName="expiredAt" />
+					</when>
+					<otherwise>
+						<set-variable
+							value="#[org.equinox.api.process.Utils.formatDate(xpath3('//expiredAt'))]"
+							variableName="expiredAt" />
+					</otherwise>
+				</choice>
+				<set-variable value="#[xpath3('//paymentCode')]"
+					variableName="paymentCode" doc:name="Variable" />
+				<expression-component doc:name="Expression">
+					<![CDATA[				
+					detailMap = new java.util.HashMap();
+					detailMap['to'] = flowVars['to'];
+					detailMap['email'] = originalPayload['email'];
+					detailMap['paymentCode'] = flowVars['paymentCode'];
+					detailMap['billingName'] = flowVars['billingName'];
+					detailMap['amount']= flowVars['amount'];
+					detailMap['expiredAt']= flowVars['expiredAt'];
+					payload = detailMap;]]>
+				</expression-component>
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					connector-ref="Notification_VM" path="email.reminder.notification"
+					doc:name="VM" />
+				<expression-component doc:name="Expression">
+					<![CDATA[responseMap = new java.util.HashMap();
+						responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
+					payload = responseMap;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(flowVars['status']);			
+					payload = responseMap;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
+		<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+	</flow>
+</mule>
