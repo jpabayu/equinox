@@ -11,7 +11,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
 http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd">
 
-	<flow name="trxHistoryConfigFlow">
+	<flow name="trxHistorySettlementConfigFlow">
 		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
 			doc:name="Variable" />
 		<expression-component doc:name="Expression">
@@ -104,7 +104,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			<set-variable variableName="toUsername"
 				value="#[xpath3('//transfers' + [counter] + '/toMember/username')]"
 				doc:name="Variable" />
-			
+
 			<set-variable variableName="reverseByID"
 				value="#[xpath3('//transfers' + [counter] + '/reverseBy/id')]"
 				doc:name="Variable" />
@@ -118,64 +118,76 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				value="#[xpath3('//transfers' + [counter] + '/transferType/name')]"
 				doc:name="Variable" />
 
-			<expression-transformer
-				expression="#[trxPayload['amount']=flowVars.amount;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['traceNumber']=flowVars.traceNumber;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['transactionNumber']=flowVars.transactionNumber;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['transactionDate']=flowVars.transactionDate;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['formattedTransactionDate']=flowVars.formattedTransactionDate;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['transactionState']=flowVars.transactionState;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['description']=flowVars.description;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[transferTypeFields['name']=flowVars.transferTypeName;transferTypeFields]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['transactionType']=flowVars.transferTypeFields;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[fromMemberFields['name']=flowVars.fromName;fromMemberFields]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[fromMemberFields['username']=flowVars.fromUsername;fromMemberFields]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[toMemberFields['name']=flowVars.toName;toMemberFields]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[toMemberFields['username']=flowVars.toUsername;toMemberFields]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[reverseByFields['name']=flowVars.reverseByName;reverseByFields]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[reverseByFields['username']=flowVars.reverseByUsername;reverseByFields]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['sourceAccount']=flowVars.fromMemberFields;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['destinationAccount']=flowVars.toMemberFields;trxPayload]"
-				doc:name="Expression" />
-			<expression-transformer
-				expression="#[trxPayload['reverseBy']=flowVars.reverseByFields;trxPayload]"
-				doc:name="Expression" />
+			<choice>
+				<when expression="#[flowVars['transferTypeName'] == 'Bank Transfer Partner']">
+					<expression-transformer
+						expression="#[trxPayload['amount']=flowVars.amount;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['traceNumber']=flowVars.traceNumber;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['transactionNumber']=flowVars.transactionNumber;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['transactionDate']=flowVars.transactionDate;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['formattedTransactionDate']=flowVars.formattedTransactionDate;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['transactionState']=flowVars.transactionState;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['description']=flowVars.description;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[transferTypeFields['name']=flowVars.transferTypeName;transferTypeFields]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['transactionType']=flowVars.transferTypeFields;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[fromMemberFields['name']=flowVars.fromName;fromMemberFields]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[fromMemberFields['username']=flowVars.fromUsername;fromMemberFields]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[toMemberFields['name']=flowVars.toName;toMemberFields]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[toMemberFields['username']=flowVars.toUsername;toMemberFields]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[reverseByFields['name']=flowVars.reverseByName;reverseByFields]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[reverseByFields['username']=flowVars.reverseByUsername;reverseByFields]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['sourceAccount']=flowVars.fromMemberFields;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['destinationAccount']=flowVars.toMemberFields;trxPayload]"
+						doc:name="Expression" />
+					<expression-transformer
+						expression="#[trxPayload['reverseBy']=flowVars.reverseByFields;trxPayload]"
+						doc:name="Expression" />
 
-			<expression-component doc:name="Expression">
-				<![CDATA[trxMaps.add(trxPayload);]]>
-			</expression-component>
+					<expression-component doc:name="Expression">
+						<![CDATA[trxMaps.add(trxPayload);]]>
+					</expression-component>
+				</when>
+				<otherwise>
+					<!--expression-component doc:name="Expression">
+						<![CDATA[trxMaps.add(trxPayload);]]>
+					</expression-component-->
+					<logger level="INFO" message="NO TRANSACTION" />
+				</otherwise>
+			</choice>
+
+
 		</foreach>
 		<choice>
 			<when expression="#[xpath3('//status/message') == 'PROCESSED']">

@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<flow name="paymentChannelRegisterMainFlow">
+		<!-- ############ REGISTER CHANNEL CC ################## -->
+		<set-variable variableName="dokuChannelID" value="${doku.channel.id}"
+			doc:name="Variable" />
+		<set-variable variableName="dokuTrfTypeID" value="${doku.transfer.type.id}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+			<![CDATA[msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+					   <soapenv:Header>
+					      <ser:headerAuth>
+					         <token>' + flowVars['token'] + '</token>
+					      </ser:headerAuth>
+					   </soapenv:Header>
+					   <soapenv:Body>
+					      <ser:createPaymentChannelPermissions>
+					         <channelID>' + flowVars['dokuChannelID'] + '</channelID>
+					         <transferTypeID>' + flowVars['dokuTrfTypeID'] + '</transferTypeID>
+					         <username>' + originalPayload['username'] + '</username>
+					      </ser:createPaymentChannelPermissions>
+					   </soapenv:Body>
+					</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<set-payload
+			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+			doc:name="Set Payload" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="billpayments" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction"
+					value="&quot;createPaymentChannelPermissions&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+
+		<!-- ############ REGISTER CHANNEL IDM ################## -->
+		<set-variable variableName="retailChannelID" value="${retail.channel.id}"
+			doc:name="Variable" />
+		<set-variable variableName="idmTrfTypeID" value="${idm.transfer.type.id}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+			<![CDATA[msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+					   <soapenv:Header>
+					      <ser:headerAuth>
+					         <token>' + flowVars['token'] + '</token>
+					      </ser:headerAuth>
+					   </soapenv:Header>
+					   <soapenv:Body>
+					      <ser:createPaymentChannelPermissions>
+					         <channelID>' + flowVars['retailChannelID'] + '</channelID>
+					         <transferTypeID>' + flowVars['idmTrfTypeID'] + '</transferTypeID>
+					         <username>' + originalPayload['username'] + '</username>
+					      </ser:createPaymentChannelPermissions>
+					   </soapenv:Body>
+					</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<set-payload
+			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+			doc:name="Set Payload" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="billpayments" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction"
+					value="&quot;createPaymentChannelPermissions&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+
+		<!-- ############ REGISTER CHANNEL ALFAMART ################## -->
+		<set-variable variableName="alfaTrfTypeID" value="${alfa.transfer.type.id}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+			<![CDATA[msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+					   <soapenv:Header>
+					      <ser:headerAuth>
+					         <token>' + flowVars['token'] + '</token>
+					      </ser:headerAuth>
+					   </soapenv:Header>
+					   <soapenv:Body>
+					      <ser:createPaymentChannelPermissions>
+					         <channelID>' + flowVars['retailChannelID'] + '</channelID>
+					         <transferTypeID>' + flowVars['alfaTrfTypeID'] + '</transferTypeID>
+					         <username>' + originalPayload['username'] + '</username>
+					      </ser:createPaymentChannelPermissions>
+					   </soapenv:Body>
+					</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<set-payload
+			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+			doc:name="Set Payload" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="billpayments" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction"
+					value="&quot;createPaymentChannelPermissions&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+
+		<!-- ############ REGISTER CHANNEL BANK TRANSFER ################## -->
+		<set-variable variableName="vaChannelID" value="${va.channel.id}"
+			doc:name="Variable" />
+		<set-variable variableName="vaTrfTypeID" value="${va.transfer.type.id}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+			<![CDATA[msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+					   <soapenv:Header>
+					      <ser:headerAuth>
+					         <token>' + flowVars['token'] + '</token>
+					      </ser:headerAuth>
+					   </soapenv:Header>
+					   <soapenv:Body>
+					      <ser:createPaymentChannelPermissions>
+					         <channelID>' + flowVars['vaChannelID'] + '</channelID>
+					         <transferTypeID>' + flowVars['vaTrfTypeID'] + '</transferTypeID>
+					         <username>' + originalPayload['username'] + '</username>
+					      </ser:createPaymentChannelPermissions>
+					   </soapenv:Body>
+					</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<set-payload
+			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+			doc:name="Set Payload" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="billpayments" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction"
+					value="&quot;createPaymentChannelPermissions&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+
+		<!-- ############ REGISTER CHANNEL LINKAJA ################## -->
+		<set-variable variableName="linkAjaChannelID" value="${link.aja.channel.id}"
+			doc:name="Variable" />
+		<set-variable variableName="linkAjaTrfTypeID" value="${link.aja.transfer.type.id}"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+			<![CDATA[msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+					   <soapenv:Header>
+					      <ser:headerAuth>
+					         <token>' + flowVars['token'] + '</token>
+					      </ser:headerAuth>
+					   </soapenv:Header>
+					   <soapenv:Body>
+					      <ser:createPaymentChannelPermissions>
+					         <channelID>' + flowVars['linkAjaChannelID'] + '</channelID>
+					         <transferTypeID>' + flowVars['linkAjaTrfTypeID'] + '</transferTypeID>
+					         <username>' + originalPayload['username'] + '</username>
+					      </ser:createPaymentChannelPermissions>
+					   </soapenv:Body>
+					</soapenv:Envelope>';
+			payload = msg;]]>
+		</expression-component>
+		<set-payload
+			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+			doc:name="Set Payload" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="billpayments" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction"
+					value="&quot;createPaymentChannelPermissions&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+	</flow>
+</mule>

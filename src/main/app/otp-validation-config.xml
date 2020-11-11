@@ -116,6 +116,15 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 									doc:name="Expression" />
 								<flow-ref name="resetCredentialConfigFlow" />
 							</when>
+							<when expression="#[originalPayload['type'] == 'changePIN']">
+								<set-variable
+									value="0#[org.apache.commons.lang.StringUtils.substring(originalPayload['msisdn'], 2)]"
+									variableName="fromMember" doc:name="Variable" />
+								<expression-transformer
+									expression="#[originalPayload['fromMember']=flowVars['fromMember'];originalPayload]"
+									doc:name="Expression" />
+								<flow-ref name="changeCredentialByOTPConfigFlow" />
+							</when>
 							<otherwise>
 								<flow-ref name="otpConfirmConfigFlow" />
 							</otherwise>
@@ -138,6 +147,15 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 							expression="#[originalPayload['fromMember']=flowVars['fromMember'];originalPayload]"
 							doc:name="Expression" />
 						<flow-ref name="resetCredentialConfigFlow" />
+					</when>
+					<when expression="#[originalPayload['type'] == 'changePIN']">
+						<set-variable
+							value="0#[org.apache.commons.lang.StringUtils.substring(originalPayload['msisdn'], 2)]"
+							variableName="fromMember" doc:name="Variable" />
+						<expression-transformer
+							expression="#[originalPayload['fromMember']=flowVars['fromMember'];originalPayload]"
+							doc:name="Expression" />
+						<flow-ref name="changeCredentialByOTPConfigFlow" />
 					</when>
 					<otherwise>
 						<flow-ref name="otpConfirmConfigFlow" />

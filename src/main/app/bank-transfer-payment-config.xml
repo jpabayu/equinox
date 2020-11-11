@@ -19,11 +19,14 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			value="#[otp = (originalPayload['otp'] == null) ? '' : originalPayload['otp']]"
 			variableName="otp" doc:name="Variable" />
 		<set-variable
-			value="[credential = (originalPayload['credential'] == null) ? '' : originalPayload['credential']]"
+			value="#[credential = (originalPayload['credential'] == null) ? '' : originalPayload['credential']]"
 			variableName="credential" doc:name="Variable" />
 		<set-variable
 			value="#[accessTypeID = (originalPayload['accessTypeID'] == null) ? '' : originalPayload['accessTypeID']]"
 			variableName="accessTypeID" doc:name="Variable" />
+		<set-variable
+                        value="#[description = (originalPayload['description'] == null) ? '' : originalPayload['description']]"
+                        variableName="description" doc:name="Variable" />
 
 		<expression-component doc:name="Expression">
 		<![CDATA[
@@ -39,17 +42,18 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				         <accountNumber>' + originalPayload['accountNo'] + '</accountNumber>
 				         <amount>' + originalPayload['amount'] + '</amount>
 				         <bankID>' + originalPayload['bankID'] + '</bankID>
-				         <description>' + originalPayload['description'] + '</description>
+				         <description>' + flowVars['description'] + '</description>
 				         <otp>' + flowVars['otp'] + '</otp>
+					 <credential>' + flowVars['credential'] + '</credential>
+				         <accessTypeID>' + flowVars['accessTypeID'] + '</accessTypeID>
 				         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
 				         <username>' + originalPayload['fromMember'] + '</username>
-				         <credential>' + flowVars['credential'] + '</credential>
-				         <accessTypeID>' + flowVars['accessTypeID'] + '</accessTypeID>
 				      </ser:bankAccountTransferPayment>
 				   </soapenv:Body>
 				</soapenv:Envelope>';
 			payload = msg;]]>
 		</expression-component>
+		<logger level="INFO" message="REQUEST: #[payload]"/>
 		<set-payload
 			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]" />
 		<http:request config-ref="HTTP_Request_Configuration"
@@ -61,6 +65,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 		</http:request>
 		<byte-array-to-string-transformer
 			doc:name="Byte Array to String" />
+		<logger	level="INFO" message="RESPONSE: #[payload]"/>
 		<set-variable value="#[xpath3('//status/message')]"
 			variableName="status" doc:name="Variable" />
 		<set-variable value="#[xpath3('//transactionAmount')]"

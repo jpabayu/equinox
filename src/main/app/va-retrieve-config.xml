@@ -81,6 +81,14 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					variableName="originatorUsername" />
 				<set-variable value="#[xpath3('//email')]"
 					variableName="email" />
+				<set-variable value="#[xpath3('//subscribed')]"
+					variableName="subscribed" />
+				<set-variable value="#[xpath3('//billingCyle')]"
+					variableName="billingCyle" />
+				<set-variable value="#[xpath3('//membership/username')]"
+					variableName="membershipUsername" />
+				<set-variable value="#[xpath3('//membership/name')]"
+					variableName="membership" />
 				<expression-component doc:name="Expression">
 					<![CDATA[				
 					detailMap = new java.util.HashMap();
@@ -94,6 +102,8 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					detailMap['fullPayment']= flowVars['fullPayment'];
 					detailMap['description'] = flowVars['desc'];
 					detailMap['email'] = flowVars['email'];
+					detailMap['subscribed'] = flowVars['subscribed'];
+					detailMap['billingCyle'] = flowVars['billingCyle'];
 			
 					bankMap = new java.util.HashMap();
 					bankMap['name'] = flowVars['bankName'];
@@ -102,11 +112,16 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					toMemberMap = new java.util.HashMap();
 					toMemberMap['name'] = flowVars['originator'];
 					toMemberMap['username'] = flowVars['originatorUsername'];
+					
+					membershipMemberMap = new java.util.HashMap();
+					membershipMemberMap['name'] = flowVars['membership'];
+					membershipMemberMap['username'] = flowVars['membershipUsername'];
 
 					responseMap = new java.util.LinkedHashMap();
 					responseMap['recordDetail'] = detailMap;
 					responseMap['bank'] = bankMap;
 					responseMap['toMember'] = toMemberMap;
+					responseMap['membership'] = membershipMemberMap;
 					responseMap['ticketID']= flowVars['ticketID'];
 					
 					responseList = new java.util.LinkedList();

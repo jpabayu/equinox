@@ -31,7 +31,7 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 					   </soapenv:Header>
 					   <soapenv:Body>
 					      <ser:membersKYCRequest>
-					         <address>' + originalPayload['address']+ '</address>
+					         <address>jakarta</address>
 					         <dateOfBirth>' + originalPayload['dateOfBirth'] + '</dateOfBirth>
 					         <groupID>' + globalConfig['member.default.registered.group.id'] + '</groupID>
 					         <idCardNo>' + originalPayload['idCardNo'] + '</idCardNo>

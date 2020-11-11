@@ -19,35 +19,63 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
 http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/https/current/mule-https.xsd
 http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
 
-
 	<flow name="vaBillingStatusMainConfigFlow">
 		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
 			doc:name="Variable" />
-		<expression-component doc:name="Expression">
-		<![CDATA[
-			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
-				   <soapenv:Header>
-				      <ser:headerAuth>
-				         <token>' + flowVars['tokennc'] + '</token>
-				      </ser:headerAuth>
-				   </soapenv:Header>
-				   <soapenv:Body>
-				      <ser:loadVAByMemberStatus>
-				         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
-				         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
-				         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
-				         <toDate>' + originalPayload['toDate'] + '</toDate>
-				         <username>' + originalPayload['parentUsername'] + '</username>
-				      </ser:loadVAByMemberStatus>
-				   </soapenv:Body>
-				</soapenv:Envelope>';
-			payload = msg;]]>
-		</expression-component>
+		<choice>
+			<when expression="#[originalPayload['status'] != '']">
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['tokennc'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body>
+							      <ser:loadVAMemberByStatus>
+							         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
+							         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
+							         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
+							         <toDate>' + originalPayload['toDate'] + '</toDate>
+							         <billingStatus>' + originalPayload['status'] + '</billingStatus>
+							         <subscribed>' + originalPayload['subscribed'] + '</subscribed>
+							         <username>' + originalPayload['parentUsername'] + '</username>
+							      </ser:loadVAMemberByStatus>
+							   </soapenv:Body>
+							</soapenv:Envelope>';
+						payload = msg;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['tokennc'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body>
+							      <ser:loadVAMemberByStatus>
+							         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
+							         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
+							         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
+							         <toDate>' + originalPayload['toDate'] + '</toDate>
+							         <billingStatus/>
+							         <username>' + originalPayload['parentUsername'] + '</username>
+							      </ser:loadVAMemberByStatus>
+							   </soapenv:Body>
+							</soapenv:Envelope>';
+						payload = msg;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
 		<http:request config-ref="HTTP_Request_Configuration"
 			path="virtualaccounts" method="POST" doc:name="HTTP">
 			<http:request-builder>
 				<http:header headerName="soapaction"
-					value="&quot;loadVAByMemberStatus&quot;" />
+					value="&quot;loadVAMemberByStatus&quot;" />
 			</http:request-builder>
 			<http:success-status-code-validator
 				values="200,500" />
@@ -62,116 +90,73 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 			<when expression="#[flowVars['statusTrx'] == 'PROCESSED']">
 				<set-variable variableName="vaMaps"
 					value="#[new java.util.LinkedList()]" doc:name="Variable" />
-				<choice>
-					<when expression="#[originalPayload['status'] != '']">
-						<foreach collection="#[xpath3('//vaRecord', payload, 'NODESET')]"
-							doc:name="For Each">
-							<set-variable variableName="vaPayload"
-								value="#[new java.util.LinkedHashMap()]" doc:name="Variable" />
-							<set-variable value="#[xpath3('//vaRecord' + [counter]  + '/amount')]"
-								variableName="amount" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/referenceNumber')]"
-								variableName="referenceNumber" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/paymentCode')]"
-								variableName="paymentCode" doc:name="Variable" />
-							<set-variable value="#[xpath3('//vaRecord' + [counter] + '/name')]"
-								variableName="name" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/parentUsername')]"
-								variableName="parentUsername" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/persistent')]"
-								variableName="persistent" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/billingStatus/status')]"
-								variableName="billingStatus" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/description')]"
-								variableName="description" doc:name="Variable" />
 
-							<expression-transformer
-								expression="#[vaPayload['paymentCode']=flowVars.paymentCode;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['name']=flowVars.name;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['amount']=flowVars.amount;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['referenceNumber']=flowVars.referenceNumber;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['parentUsername']=flowVars.parentUsername;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['description']=flowVars.description;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['persistent']=flowVars.persistent;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['billingStatus']=flowVars.billingStatus;vaPayload]" />
+				<foreach collection="#[xpath3('//vaRecord', payload, 'NODESET')]"
+					doc:name="For Each">
+					<set-variable variableName="vaPayload"
+						value="#[new java.util.LinkedHashMap()]" doc:name="Variable" />
+					<set-variable value="#[xpath3('//vaRecord' + [counter]  + '/amount')]"
+						variableName="amount" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/referenceNumber')]"
+						variableName="referenceNumber" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/paymentCode')]"
+						variableName="paymentCode" doc:name="Variable" />
+					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/name')]"
+						variableName="name" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/parentUsername')]"
+						variableName="parentUsername" doc:name="Variable" />
+					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/persistent')]"
+						variableName="persistent" doc:name="Variable" />
+					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/status')]"
+						variableName="billingStatus" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/transactionDate')]"
+						variableName="transactionDate" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/formattedTransactionDate')]"
+						variableName="formattedTransactionDate" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/transactionNumber')]"
+						variableName="transactionNumber" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/description')]"
+						variableName="description" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/fullPayment')]"
+						variableName="fullPayment" doc:name="Variable" />
 
-							<choice>
-								<when
-									expression="#[originalPayload['status'] == flowVars['billingStatus']]">
-									<expression-component doc:name="Expression">
-										<![CDATA[vaMaps.add(vaPayload);]]>
-									</expression-component>
-								</when>
-								<otherwise>
-									<logger level="INFO" message="BILLING STATUS FALSE" />
-								</otherwise>
-							</choice>
-						</foreach>
-					</when>
-					<otherwise>
-						<foreach collection="#[xpath3('//vaRecord', payload, 'NODESET')]"
-							doc:name="For Each">
-							<set-variable variableName="vaPayload"
-								value="#[new java.util.LinkedHashMap()]" doc:name="Variable" />
-							<set-variable value="#[xpath3('//vaRecord' + [counter]  + '/amount')]"
-								variableName="amount" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/referenceNumber')]"
-								variableName="referenceNumber" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/paymentCode')]"
-								variableName="paymentCode" doc:name="Variable" />
-							<set-variable value="#[xpath3('//vaRecord' + [counter] + '/name')]"
-								variableName="name" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/parentUsername')]"
-								variableName="parentUsername" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/persistent')]"
-								variableName="persistent" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/billingStatus/status')]"
-								variableName="billingStatus" doc:name="Variable" />
-							<set-variable
-								value="#[xpath3('//vaRecord' + [counter] + '/description')]"
-								variableName="description" doc:name="Variable" />
+					<expression-transformer
+						expression="#[vaPayload['paymentCode']=flowVars.paymentCode;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['name']=flowVars.name;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['amount']=flowVars.amount;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['referenceNumber']=flowVars.referenceNumber;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['parentUsername']=originalPayload.parentUsername;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['description']=flowVars.description;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['persistent']=flowVars.persistent;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['billingStatus']=flowVars.billingStatus;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['transactionDate']=flowVars.transactionDate;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['transactionNumber']=flowVars.transactionNumber;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['formattedTransactionDate']=flowVars.formattedTransactionDate;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['fullPayment']=flowVars.fullPayment;vaPayload]" />
 
-							<expression-transformer
-								expression="#[vaPayload['paymentCode']=flowVars.paymentCode;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['name']=flowVars.name;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['amount']=flowVars.amount;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['referenceNumber']=flowVars.referenceNumber;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['parentUsername']=flowVars.parentUsername;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['description']=flowVars.description;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['persistent']=flowVars.persistent;vaPayload]" />
-							<expression-transformer
-								expression="#[vaPayload['billingStatus']=flowVars.billingStatus;vaPayload]" />
-
-							<expression-component doc:name="Expression">
-								<![CDATA[vaMaps.add(vaPayload);]]>
-							</expression-component>
-						</foreach>
-					</otherwise>
-				</choice>
+					<expression-component doc:name="Expression">
+						<![CDATA[vaMaps.add(vaPayload);]]>
+					</expression-component>
+				</foreach>
 
 				<expression-component doc:name="Expression">
 					<![CDATA[respMap = new java.util.HashMap();

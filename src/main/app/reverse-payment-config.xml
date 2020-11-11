@@ -25,7 +25,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				   <soapenv:Body>
 				      <ser:reversePayment>
 				         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
-				         <username>' + originalPayload['parentUsername'] + '</username>
+					 <username>' + originalPayload['fromMember'] + '</username>
 				      </ser:reversePayment>
 				   </soapenv:Body>
 				</soapenv:Envelope>';

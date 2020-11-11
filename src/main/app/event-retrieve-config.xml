@@ -60,6 +60,15 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					variableName="description" doc:name="Variable" />
 				<set-variable value="#[xpath3('//event/formattedExpiredAt')]"
 					variableName="expiredAt" doc:name="Variable" />
+				<choice>
+					<when expression="#[flowVars['amount'] == 10000]">
+						<set-variable value="true" variableName="fullPayment" />
+					</when>
+					<otherwise>
+						<set-variable value="false" variableName="fullPayment" />
+					</otherwise>
+				</choice>
+
 				<expression-component doc:name="Expression">
 					<![CDATA[
 					detailMap = new java.util.HashMap();
@@ -71,6 +80,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					descMap['ticketID'] = flowVars['ticket'];
 					descMap['expiredAt']= flowVars['expiredAt'];
 					descMap['paymentURL'] = globalConfig['payment.page.url.address'] + flowVars['ticket'];
+					descMap['fullPayment'] = flowVars['fullPayment'];
 			
 					responseMap = new java.util.LinkedHashMap();
 					responseMap['event'] = detailMap;

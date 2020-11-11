@@ -44,6 +44,18 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 		<set-variable
 			value="#[persistent = (originalPayload['persistent'] == null) ? 'null' : originalPayload['persistent']]"
 			variableName="persistent" doc:name="Variable" />
+		<set-variable
+			value="#[email = (originalPayload['email'] == null) ? 'null' : originalPayload['email']]"
+			variableName="email" doc:name="Variable" />
+		<set-variable
+			value="#[msisdn = (originalPayload['msisdn'] == null) ? 'null' : originalPayload['msisdn']]"
+			variableName="msisdn" doc:name="Variable" />
+		<set-variable
+			value="#[description = (originalPayload['description'] == null) ? 'null' : originalPayload['description']]"
+			variableName="description" doc:name="Variable" />
+		<set-variable
+			value="#[billingStatus = (originalPayload['billingStatus'] == null) ? '' : originalPayload['billingStatus']]"
+			variableName="billingStatus" doc:name="Variable" />
 
 		<expression-component doc:name="Expression">
 		<![CDATA[
@@ -63,6 +75,10 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 				         <name>' + flowVars['name'] + '</name>
 				         <paymentCode>' + originalPayload['paymentCode'] + '</paymentCode>
 				         <persistent>' + flowVars['persistent'] + '</persistent>
+					 <email>' + flowVars['email'] + '</email>
+				         <msisdn>' + flowVars['msisdn'] + '</msisdn>
+				         <description>' + flowVars['description'] + '</description>
+					 <status>' + flowVars['billingStatus'] + '</status>
 				         <username>' + originalPayload['parentUsername'] + '</username>
 				      </ser:updateVA>
 				   </soapenv:Body>

@@ -87,6 +87,8 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 						variableName="persistent" doc:name="Variable" />
 					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/description')]"
 						variableName="description" doc:name="Variable" />
+					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/isFullPayment')]"
+						variableName="fullPayment" doc:name="Variable" />
 
 					<expression-transformer
 						expression="#[vaPayload['paymentCode']=flowVars.paymentCode;vaPayload]"
@@ -105,6 +107,8 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 						expression="#[vaPayload['description']=flowVars.description;vaPayload]" />
 					<expression-transformer
 						expression="#[vaPayload['persistent']=flowVars.persistent;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['fullPayment']=flowVars.fullPayment;vaPayload]" />
 					<expression-component doc:name="Expression">
 						<![CDATA[vaMaps.add(vaPayload);]]>
 					</expression-component>

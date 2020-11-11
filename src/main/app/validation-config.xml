@@ -154,6 +154,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 				<set-variable value="#[xpath3('//validate')]"
 					variableName="validateHash" doc:name="Variable" />
 				<set-payload value="#[loginPayload]" />
+				<logger level="INFO" message="[List Allowed Group ID : #[flowVars['listAllowedGroupID']]]" />
 				<choice doc:name="Choice">
 					<when
 						expression="#[org.apache.commons.lang.StringUtils.contains(listAllowedGroupID, '[' + groupID + ']')]">
@@ -244,6 +245,8 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 			variableName="parentName" doc:name="Variable" />
 		<set-variable value="#[xpath3('//members/username')]"
 			variableName="parentUsername" doc:name="Variable" />
+		<set-variable value="#[xpath3('//members/msisdn')]"
+			variableName="parentMsisdn" doc:name="Variable" />
 		<choice doc:name="Choice">
 			<when expression="#[flowVars['status'] == 'PROCESSED']">
 				<foreach collection="#[xpath3('//customFields', payload, 'NODESET')]"
@@ -266,6 +269,9 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					doc:name="Expression" />
 				<expression-transformer
 					expression="#[originalPayload['parentUsername']=flowVars['parentUsername'];originalPayload]"
+					doc:name="Expression" />
+				<expression-transformer
+					expression="#[originalPayload['parentMsisdn']=flowVars['parentMsisdn'];originalPayload]"
 					doc:name="Expression" />
 				<set-variable variableName="globalConfig" value="#[new java.util.HashMap()]"
 					doc:name="Variable" />

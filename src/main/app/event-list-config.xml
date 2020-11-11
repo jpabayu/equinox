@@ -82,6 +82,14 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 						variableName="description" doc:name="Variable" />
 					<set-variable value="#[xpath3('//event' + [counter] + '/ticketID')]"
 						variableName="ticketID" doc:name="Variable" />
+					<choice>
+						<when expression="#[flowVars['amount'] == 10000]">
+							<set-variable value="true" variableName="fullPayment" />
+						</when>
+						<otherwise>
+							<set-variable value="false" variableName="fullPayment" />
+						</otherwise>
+					</choice>
 
 					<expression-transformer
 						expression="#[eventPayload['eventOrganizer']=flowVars.eventOrganizer;eventPayload]"
@@ -96,6 +104,9 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 						expression="#[eventPayload['ticketID']=flowVars.ticketID;eventPayload]" />
 					<expression-transformer
 						expression="#[eventPayload['description']=flowVars.description;eventPayload]" />
+					<expression-transformer
+						expression="#[eventPayload['fullPayment']=flowVars.fullPayment;eventPayload]" />
+
 					<expression-component doc:name="Expression">
 						<![CDATA[eventMaps.add(eventPayload);]]>
 					</expression-component>

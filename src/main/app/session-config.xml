@@ -31,6 +31,9 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 			doc:name="Variable" />
 		<set-payload value="#[message.inboundProperties.'Authorization']"
 			doc:name="Set Payload" />
+		<logger level="INFO"
+			message="[{#[correlationID]} : LOGIN Request = #[payload]]"
+			doc:name="Logger" />
 		<choice doc:name="Choice">
 			<when expression="#[payload == null]">
 				<expression-component doc:name="Expression">

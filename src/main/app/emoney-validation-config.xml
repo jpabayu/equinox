@@ -725,6 +725,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			doc:name="Message">
 			<expression-filter expression="#[payload == 'ALLOWED']" />
 		</message-filter>
+		<logger level="INFO" message="PAYLOAD= #[payload]" />
 
 		<set-variable
 			value="#[defaultFromMember = (originalPayload['fromMember'] == null) ? originalPayload['parentUsername'] : originalPayload['fromMember']]"
@@ -766,7 +767,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			</otherwise>
 		</choice>
 	</flow>
-
+	
 	<flow name="merchantRequestPaymentValidationFlow">
 		<message-filter onUnaccepted="invalidParameterFlow"
 			doc:name="Message">
@@ -883,4 +884,93 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			</otherwise>
 		</choice>
 	</flow>
+	
+	<flow name="trxHistorySettlementValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+				<expression-filter expression="#[originalPayload['fromMember'] != null]" />
+			</and-filter>
+		</message-filter>
+
+		<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+
+		<flow-ref name="accessValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+
+		<set-variable
+			value="#[defaultAccountID = (originalPayload['accountID'] == null) ? globalConfig['default.account.id'] : originalPayload['accountID']]"
+			variableName="defaultAccountID" doc:name="Variable" />
+
+		<expression-transformer
+			expression="#[originalPayload['accountID']=flowVars['defaultAccountID'];originalPayload]"
+			doc:name="Expression" />
+
+		<set-variable
+			value="#[defaultCurrentPage = (originalPayload['currentPage'] == null) ? '0' : originalPayload['currentPage']]"
+			variableName="defaultCurrentPage" doc:name="Variable" />
+
+		<expression-transformer
+			expression="#[originalPayload['currentPage']=flowVars['defaultCurrentPage'];originalPayload]"
+			doc:name="Expression" />
+
+		<set-variable
+			value="#[defaultPageSize = (originalPayload['pageSize'] == null) ? '15' : originalPayload['pageSize']]"
+			variableName="defaultPageSize" doc:name="Variable" />
+
+		<expression-transformer
+			expression="#[originalPayload['pageSize']=flowVars['defaultPageSize'];originalPayload]"
+			doc:name="Expression" />
+
+		<set-variable
+			value="#[fromDate = (originalPayload['fromDate'] == null) ? org.equinox.api.process.Utils.GetDate('yyyy-MM-dd') : originalPayload['fromDate']]"
+			variableName="fromDate" doc:name="Variable" />
+
+		<expression-transformer
+			expression="#[originalPayload['fromDate']=flowVars['fromDate'];originalPayload]"
+			doc:name="Expression" />
+
+		<set-variable
+			value="#[toDate = (originalPayload['toDate'] == null) ? org.equinox.api.process.Utils.GetDate('yyyy-MM-dd') : originalPayload['toDate']]"
+			variableName="toDate" doc:name="Variable" />
+
+		<expression-transformer
+			expression="#[originalPayload['toDate']=flowVars['toDate'];originalPayload]"
+			doc:name="Expression" />
+
+		<choice doc:name="Choice">
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice doc:name="Choice">
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload.'requestAuth')]">
+						<flow-ref name="hashValidation" doc:name="Flow Reference" />
+						<message-filter onUnaccepted="requestValidationFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+						<flow-ref name="trxHistorySettlementConfigFlow" doc:name="Flow Reference" />
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" doc:name="Flow Reference" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="DEBUG" message="[SKIP HASH Validation]"
+					doc:name="Logger" />
+				<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+				<flow-ref name="trxHistorySettlementConfigFlow" doc:name="Flow Reference" />
+			</otherwise>
+		</choice>
+	</flow>
+	
 </mule>

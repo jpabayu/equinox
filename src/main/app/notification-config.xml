@@ -31,7 +31,7 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 			payload = responseMap;]]>
 		</expression-component>
 		<jms:outbound-endpoint connector-ref="Active_MQ"
-			queue="notification.sms" doc:name="JMS" />
+			queue="emoney.notification.sms" doc:name="JMS" />
 	</flow>
 
 	<flow name="registerNotificationConfigFlow">
@@ -51,14 +51,14 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		<expression-component doc:name="Expression">
 			<![CDATA[
 			regMap = new java.util.HashMap();
-			regMap['from']= 'noreply@optima.co.id';
+			regMap['from']= 'info.narobil.id<noreply@info.narobil.id>';
 			regMap['to']= flowVars['email'];
 			regMap['subject']= 'ACCOUNT REGISTRATION';
 			regMap['body']= payload ;
 			payload = regMap;]]>
 		</expression-component>
 		<jms:outbound-endpoint connector-ref="Active_MQ"
-			queue="notification.email" doc:name="JMS" />
+			queue="emoney.notification.email" doc:name="JMS" />
 	</flow>
 
 	<flow name="partnerRegisterNotificationConfigFlow">
@@ -74,7 +74,7 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		<expression-component doc:name="Expression">
 			<![CDATA[
 			regMap = new java.util.HashMap();
-			regMap['from']= 'noreply@optima.co.id';
+			regMap['from']= 'info.narobil.id<noreply@info.narobil.id>';
 			regMap['to']= flowVars['email'];
 			regMap['subject']= 'PARTNER REGISTRATION';
 			regMap['body']= payload;
@@ -99,21 +99,21 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		<expression-component doc:name="Expression">
 			<![CDATA[
 			regMap = new java.util.HashMap();
-			regMap['from']= 'noreply@optima.co.id';
+			regMap['from']= 'info.narobil.id<noreply@info.narobil.id>';
 			regMap['to']= flowVars['email'];
 			regMap['subject']= 'CHANGE CREDENTIAL';
 			regMap['body']= payload;
 			payload = regMap;]]>
 		</expression-component>
 		<jms:outbound-endpoint connector-ref="Active_MQ"
-			queue="notification.email" doc:name="JMS" />
+			queue="emoney.notification.email" doc:name="JMS" />
 	</flow>
 
 	<flow name="bankAccountRegisterNotificationConfigFlow">
 		<vm:inbound-endpoint exchange-pattern="one-way"
 			connector-ref="Notification_VM" path="bank.account.register.notification"
 			doc:name="VM" />
-		<logger level="INFO" message="[Change Credential Email Notification]"
+		<logger level="INFO" message="[Bank Account Register Request Notification]"
 			doc:name="Logger" />
 		<expression-component doc:name="Expression">
 			<![CDATA[
@@ -124,57 +124,57 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 			payload = responseMap;]]>
 		</expression-component>
 		<jms:outbound-endpoint connector-ref="Active_MQ"
-			queue="notification.sms" doc:name="JMS" />
+			queue="emoney.notification.sms" doc:name="JMS" />
 	</flow>
 
 	<flow name="emailConfirmationNotificationConfigFlow">
-                <vm:inbound-endpoint exchange-pattern="one-way"
-                       	connector-ref="Notification_VM" path="email.confirmation.notification"
-                        doc:name="VM" />
-               	<set-variable value="#[payload['email']]" variableName="email"
-                        doc:name="Variable" />
-               	<set-variable value="#[payload['url']]"
-                       	variableName="url" doc:name="Variable" />
-                <logger level="INFO" message="[ Email Confirmation VA Email Notification]"
-                        doc:name="Logger" />
-                <parse-template location="EmailConfirmationVA.tmp"
-                        mimeType="text/html" doc:name="Parse Template" />
-                <expression-component doc:name="Expression">
-                        <![CDATA[
-                        regMap = new java.util.HashMap();
-                       	regMap['from']= 'noreply@optima.co.id';
-                       	regMap['to']= flowVars['email'];
-                       	regMap['subject']= 'EMAIL CONFIRMATION';
-                        regMap['body']= payload;
-                       	payload = regMap;]]>
-                </expression-component>
-                <jms:outbound-endpoint connector-ref="Active_MQ"
-                       	queue="notification.email" doc:name="JMS" />
-        </flow>
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="email.confirmation.notification"
+			doc:name="VM" />
+		<set-variable value="#[payload['email']]" variableName="email"
+			doc:name="Variable" />
+		<set-variable value="#[payload['url']]" variableName="url"
+			doc:name="Variable" />
+		<logger level="INFO" message="[ Email Confirmation VA Email Notification]"
+			doc:name="Logger" />
+		<parse-template location="EmailConfirmationVA.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<expression-component doc:name="Expression">
+             <![CDATA[
+                  regMap = new java.util.HashMap();
+                  regMap['from']= 'info.narobil.id<noreply@info.narobil.id>';
+                  regMap['to']= flowVars['email'];
+                  regMap['subject']= 'EMAIL CONFIRMATION';
+                  regMap['body']= payload;
+             payload = regMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="notification.email" doc:name="JMS" />
+	</flow>
 
-		<flow name="emailReminderVANotificationConfigFlow">
-                <vm:inbound-endpoint exchange-pattern="one-way"
-                       	connector-ref="Notification_VM" path="email.reminder.notification"
-                        doc:name="VM" />
-               	<set-variable value="#[payload['email']]" variableName="email"
-                        doc:name="Variable" />
-                <logger level="INFO" message="[ Email Reminder VA Email Notification]"
-                        doc:name="Logger" />
-                <parse-template location="PaymentCodeReminder.tmp"
-                        mimeType="text/html" doc:name="Parse Template" />
-                <expression-component doc:name="Expression">
-                        <![CDATA[
-                        regMap = new java.util.HashMap();
-                       	regMap['from']= 'noreply@optima.co.id';
-                       	regMap['to']= flowVars['email'];
-                       	regMap['subject']= 'PAYMENT CODE REMINDER';
-                        regMap['body']= payload;
-                       	payload = regMap;]]>
-                </expression-component>
-                <jms:outbound-endpoint connector-ref="Active_MQ"
-                       	queue="notification.email" doc:name="JMS" />
-        </flow>
-	
+	<flow name="emailReminderVANotificationConfigFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="email.reminder.notification"
+			doc:name="VM" />
+		<set-variable value="#[payload['email']]" variableName="email"
+			doc:name="Variable" />
+		<logger level="INFO" message="[ Email Reminder VA Email Notification]"
+			doc:name="Logger" />
+		<parse-template location="PaymentCodeReminder.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<expression-component doc:name="Expression">
+             <![CDATA[
+                regMap = new java.util.HashMap();
+                regMap['from']= 'info.narobil.id<noreply@info.narobil.id>';
+                regMap['to']= flowVars['email'];
+                regMap['subject']= 'PAYMENT CODE REMINDER';
+                regMap['body']= payload;
+             payload = regMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="notification.email" doc:name="JMS" />
+	</flow>
+
 	<flow name="verifyEmailRequestNotificationConfigFlow">
 		<vm:inbound-endpoint exchange-pattern="one-way"
 			connector-ref="Notification_VM" path="verify.email.request.notification"
@@ -189,13 +189,13 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 			mimeType="text/html" doc:name="Parse Template" />
 		<expression-component doc:name="Expression">
 			<![CDATA[regMap = new java.util.HashMap();
-				regMap['from']= 'noreply@optima.co.id';
+				regMap['from']= 'info.narobil.id<noreply@info.narobil.id>';
 				regMap['to']= flowVars['email'];
 				regMap['subject']= 'VERIFIKASI EMAIL';
 				regMap['body']= payload ;
 			payload = regMap;]]>
 		</expression-component>
 		<jms:outbound-endpoint connector-ref="Active_MQ"
-			queue="notification.email" doc:name="JMS" />
-	</flow>		
+			queue="emoney.notification.email" doc:name="JMS" />
+	</flow>
 </mule>

@@ -120,6 +120,24 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 		</message-filter>
 
 		<set-variable
+			value="#[Subscribed = (originalPayload['subscribed'] == null) ? 'false' : originalPayload['subscribed']]"
+			variableName="Subscribed" doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['subscribed']=flowVars['Subscribed'];originalPayload]"
+			doc:name="Expression" />
+
+		<choice>
+			<when expression="#[originalPayload['subscribed'] == 'true']">
+				<set-variable value="#[originalPayload['membership']]"
+					variableName="membership" />
+			</when>
+			<otherwise>
+				<set-variable value="" variableName="membership"
+					doc:name="Variable" />
+			</otherwise>
+		</choice>
+
+		<set-variable
 			value="#[FullPayment = (originalPayload['fullPayment'] == null) ? 'true' : originalPayload['fullPayment']]"
 			variableName="FullPayment" doc:name="Variable" />
 		<expression-transformer
@@ -550,7 +568,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 		</choice>
 	</flow>
 
-	<flow name="eventGetListBillingValidationFlow">
+	<flow name="eventListValidationFlow">
 		<message-filter onUnaccepted="invalidParameterFlow"
 			doc:name="Message">
 			<and-filter>
@@ -607,6 +625,13 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			doc:name="Message">
 			<expression-filter expression="#[payload == 'ALLOWED']" />
 		</message-filter>
+
+		<set-variable
+			value="#[Subscribed = (originalPayload['subscribed'] == null) ? false : originalPayload['subscribed']]"
+			variableName="Subscribed" doc:name="Variable" />
+		<expression-transformer
+			expression="#[originalPayload['subscribed']=flowVars['Subscribed'];originalPayload]"
+			doc:name="Expression" />
 
 		<choice>
 			<when expression="#[originalPayload['validateHash'] == true]">
@@ -682,7 +707,6 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			<expression-transformer
 				expression="#[originalPayload[flowVars.key]=payload;originalPayload]"
 				doc:name="Expression" />
-
 		</foreach>
 		<set-payload value="#[originalPayload]" />
 		<set-variable value="#[message.inboundProperties.'http.method']"
@@ -691,18 +715,18 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			doc:name="Variable" />
 		<set-variable value="#[payload]" variableName="originalPayload"
 			doc:name="Variable" />
-		<expression-component doc:name="Expression">
-			<![CDATA[respMap = new java.util.HashMap();
-				respMap['file']= originalPayload['file'];
-			payload = respMap;]]>
+		<expression-component doc:name="Expression"> <![CDATA[respMap 
+			= new java.util.HashMap(); respMap['file']= originalPayload['file']; payload 
+			= respMap;]]>
 		</expression-component>
 		<object-to-string-transformer />
 		<splitter
-			expression="#[rows=StringUtils.split(originalPayload.file, '\n\r');ArrayUtils.subarray(rows,1,rows.size())]"
+			expression="#[rows=StringUtils.split(originalPayload.file, '\n\r');ArrayUtils.subarray(rows,2,rows.size())]"
 			doc:name="Splitter" />
-		<expression-transformer expression="#[StringUtils.split(payload, ',')]" />
+		<expression-transformer expression="#[StringUtils.split(payload, 
+			',')]" />
 		<logger
-			message="[ Name: #[payload[0]] /No Ref: #[payload[1]] /Email: #[payload[2]] /Amount: #[payload[3]]]"
+			message="[VA-BULK-REGISTER Request Name: #[payload[0]] /No Ref: #[payload[1]] /Email: #[payload[2]] /Amount: #[payload[3]]]"
 			level="INFO" doc:name="Logger" />
 		<set-variable variableName="name" value="#[payload[0]]"
 			doc:name="Variable" />
@@ -726,9 +750,6 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			expression="#[originalPayload['amount']=flowVars.amount;originalPayload]"
 			doc:name="Expression" />
 
-		<logger level="INFO"
-			message="[{#[correlationID]} : VA-BULK-REGISTER Request = #[originalPayload]] ]"
-			doc:name="Logger" />
 		<set-property value="VABulkRegister" propertyName="type"
 			doc:name="Property" />
 		<set-property value="#[correlationID]" propertyName="messageID"
@@ -808,19 +829,17 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			doc:name="Property" />
 		<vm:outbound-endpoint exchange-pattern="one-way"
 			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
-		<logger level="INFO"
-			message="[{#[correlationID]} : VA-BULK-REGISTER Response = #[payload]]"
-			doc:name="Logger" />
 	</flow>
-	
+
 	<flow name="vaGetListBillingByEventValidationFlow">
 		<message-filter onUnaccepted="invalidParameterFlow"
 			doc:name="Message">
 			<and-filter>
 				<expression-filter expression="#[originalPayload['token'] != null]" />
-				<expression-filter expression="#[originalPayload['ticketID'] != null]" />
 				<expression-filter expression="#[originalPayload['currentPage'] != null]" />
 				<expression-filter expression="#[originalPayload['pageSize'] != null]" />
+				<expression-filter expression="#[originalPayload['fromDate'] != null]" />
+				<expression-filter expression="#[originalPayload['toDate'] != null]" />
 			</and-filter>
 		</message-filter>
 		<flow-ref name="tokenValidation" />
@@ -851,6 +870,53 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				<logger level="DEBUG" message="[SKIP HASH Validation]" />
 				<set-payload value="#[originalPayload]" />
 				<flow-ref name="vaListByEventMainConfigFlow" />
+			</otherwise>
+		</choice>
+	</flow>
+
+	<flow name="eventCreateStatusValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter>
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+				<expression-filter expression="#[originalPayload['amount'] != null]" />
+				<expression-filter expression="#[originalPayload['description'] != null]" />
+				<expression-filter expression="#[originalPayload['email'] != null]" />
+				<expression-filter expression="#[originalPayload['eventID'] != null]" />
+				<expression-filter expression="#[originalPayload['name'] != null]" />
+				<expression-filter expression="#[originalPayload['referenceNumber'] != null]" />
+				<expression-filter expression="#[originalPayload['traceNumber'] != null]" />
+				<expression-filter expression="#[originalPayload['transactionNumber'] != null]" />
+			</and-filter>
+		</message-filter>
+		<flow-ref name="tokenValidation" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+
+		<choice>
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice>
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload.'requestAuth')]">
+						<flow-ref name="hashValidation" />
+						<message-filter onUnaccepted="requestValidationFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" />
+						<flow-ref name="eventCreateStatusMainConfigFlow" />
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="DEBUG" message="[SKIP HASH Validation]" />
+				<set-payload value="#[originalPayload]" />
+				<flow-ref name="eventCreateStatusMainConfigFlow" />
 			</otherwise>
 		</choice>
 	</flow>

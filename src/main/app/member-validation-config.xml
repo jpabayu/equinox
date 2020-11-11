@@ -293,18 +293,17 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 		<pooled-component>
 			<spring-object bean="CacheProcessor" />
 		</pooled-component>
-
+		
 		<choice>
 			<when expression="#[payload != null]">
-				<set-variable value="#[payload['msisdn']]"
-					variableName="nohp" />
+				<set-variable variableName="nohp" value="#[payload['msisdn']]" />
 				<set-variable value="#[payload['token']]" variableName="token" />
 				<expression-transformer
-					expression="#[originalPayload1['msisdn']=flowVars['nohp'];originalPayload1]"
-					doc:name="Expression" />
+                                       	expression="#[originalPayload['msisdn']=flowVars['nohp'];originalPayload]"
+                                       	doc:name="Expression" />
 				<expression-transformer
-					expression="#[originalPayload['token']=flowVars['token'];originalPayload]"
-					doc:name="Expression" />
+                                        expression="#[originalPayload['token']=flowVars['token'];originalPayload]"
+                                        doc:name="Expression" />
 				<flow-ref name="tokenValidation" doc:name="Flow Reference" />
 				<message-filter onUnaccepted="requestValidationFlow"
 					doc:name="Message">
@@ -314,6 +313,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				<flow-ref name="memberVerifyEmailConfirmConfigFlow" />
 			</when>
 			<otherwise>
+				<set-payload value="SESSION_EXPIRED" />
 				<expression-component doc:name="Expression">
 					<![CDATA[regMap = new java.util.HashMap();
 						regMap['status']= org.equinox.api.data.StatusBuilder.getStatus('SESSION_EXPIRED');			

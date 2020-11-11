@@ -53,28 +53,42 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 			variableName="statusTrx" doc:name="Variable" />
 		<choice doc:name="Choice">
 			<when expression="#[flowVars['statusTrx'] == 'PROCESSED']">
-				<set-variable value="#[xpath3('//paidAmount').replaceAll('.00','')]"
+				<set-variable value="#[xpath3('//paidAmount').replace('.00','')]"
 					variableName="paidAmount" doc:name="Variable" />
 				<set-variable value="#[xpath3('//formattedPaidAmount')]"
 					variableName="formattedPaidAmount" doc:name="Variable" />
 				<set-variable value="#[xpath3('//paidBilling')]"
 					variableName="paidBilling" doc:name="Variable" />
 
-				<set-variable value="#[xpath3('//unpaidAmount').replaceAll('.00','')]"
+				<set-variable value="#[xpath3('//unpaidAmount').replace('.00','')]"
 					variableName="unpaidAmount" doc:name="Variable" />
 				<set-variable value="#[xpath3('//formattedUnpaidAmount')]"
 					variableName="formattedUnpaidAmount" doc:name="Variable" />
 				<set-variable value="#[xpath3('//unpaidBilling')]"
 					variableName="unpaidBilling" doc:name="Variable" />
 
-				<set-variable value="#[xpath3('//pendingAmount').replaceAll('.00','')]"
+				<set-variable value="#[xpath3('//pendingAmount').replace('.00','')]"
 					variableName="pendingAmount" doc:name="Variable" />
 				<set-variable value="#[xpath3('//formattedPendingAmount')]"
 					variableName="formattedPendingAmount" doc:name="Variable" />
 				<set-variable value="#[xpath3('//pendingBilling')]"
 					variableName="pendingBilling" doc:name="Variable" />
 
-				<set-variable value="#[xpath3('//totalAmount').replaceAll('.00','')]"
+				<set-variable value="#[xpath3('//expiredAmount').replace('.00','')]"
+					variableName="expiredAmount" doc:name="Variable" />
+				<set-variable value="#[xpath3('//formattedExpiredAmount')]"
+					variableName="formattedExpiredAmount" doc:name="Variable" />
+				<set-variable value="#[xpath3('//expiredBilling')]"
+					variableName="expiredBilling" doc:name="Variable" />
+				
+				<set-variable value="#[xpath3('//reversedAmount').replace('.00','')]"
+					variableName="reversedAmount" doc:name="Variable" />
+				<set-variable value="#[xpath3('//formattedReverseAmount')]"
+					variableName="formattedReversedAmount" doc:name="Variable" />
+				<set-variable value="#[xpath3('//reversedBilling')]"
+					variableName="reversedBilling" doc:name="Variable" />
+					
+				<set-variable value="#[xpath3('//totalAmount').replace('.00','')]"
 					variableName="totalAmount" doc:name="Variable" />
 				<set-variable value="#[xpath3('//formattedTotalAmount')]"
 					variableName="formattedTotalAmount" doc:name="Variable" />
@@ -95,6 +109,12 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 						respMap['pendingBilling'] = flowVars['pendingBilling'];
 						respMap['pendingAmount'] = flowVars['pendingAmount'];
 						respMap['formattedPendingAmount'] = flowVars['formattedPendingAmount'];
+						respMap['expiredBilling'] = flowVars['expiredBilling'];
+						respMap['expiredAmount'] = flowVars['expiredAmount'];
+						respMap['formattedExpiredAmount'] = flowVars['formattedExpiredAmount'];
+						respMap['reversedBilling'] = flowVars['reversedBilling'];
+						respMap['reversedAmount'] = flowVars['reversedAmount'];
+						respMap['formattedReversedAmount'] = flowVars['formattedReversedAmount'];
 						respMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');			
 					payload = respMap;]]>
 				</expression-component>

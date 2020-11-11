@@ -27,49 +27,90 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 			doc:name="Variable" />
 		<choice>
 			<when expression="#[originalPayload['communityUsername']]">
-				<set-variable value="#[originalPayload['communityUsername']]" variableName="parentUser" />
+				<set-variable value="#[originalPayload['communityUsername']]"
+					variableName="parentUser" />
 			</when>
 			<otherwise>
-				<set-variable value="#[originalPayload['parentUsername']]" variableName="parentUser" />
+				<set-variable value="#[originalPayload['parentUsername']]"
+					variableName="parentUser" />
 			</otherwise>
 		</choice>
-		<expression-component doc:name="Expression">
-		<![CDATA[
-			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
-				   <soapenv:Header>
-				      <ser:headerAuth>
-				         <token>' + flowVars['tokennc'] + '</token>
-				      </ser:headerAuth>
-				   </soapenv:Header>
-				   <soapenv:Body>
-				      <ser:loadVAByEvent>
-				         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
-				         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
-				         <eventID>' + originalPayload['ticketID'] + '</eventID>
-				         <username>' + flowVars['parentUser'] + '</username>
-				      </ser:loadVAByEvent>
-				   </soapenv:Body>
-				</soapenv:Envelope>';
-			payload = msg;]]>
-		</expression-component>
+		<choice>
+			<when>
+				<and-filter>
+					<expression-filter expression="originalPayload['eventID'] != ''" />
+					<expression-filter expression="originalPayload['eventID'] != null"/>
+				</and-filter>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['tokennc'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body>
+							      <ser:loadVAByEvent>
+							      	 <billingStatus/>
+							         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
+							         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
+							         <eventID>' + originalPayload['eventID'] + '</eventID>
+							         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
+							         <toDate>' + originalPayload['toDate'] + '</toDate>
+							         <username>' + flowVars['parentUser'] + '</username>
+							      </ser:loadVAByEvent>
+							   </soapenv:Body>
+							</soapenv:Envelope>';
+						payload = msg;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+							   <soapenv:Header>
+							      <ser:headerAuth>
+							         <token>' + flowVars['tokennc'] + '</token>
+							      </ser:headerAuth>
+							   </soapenv:Header>
+							   <soapenv:Body>
+							      <ser:loadVAByEvent>
+							      	 <billingStatus/>
+							         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
+							         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
+							         <eventID/>
+							         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
+							         <toDate>' + originalPayload['toDate'] + '</toDate>
+							         <username>' + flowVars['parentUser'] + '</username>
+							      </ser:loadVAByEvent>
+							   </soapenv:Body>
+							</soapenv:Envelope>';
+						payload = msg;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
 		<http:request config-ref="HTTP_Request_Configuration"
 			path="virtualaccounts" method="POST" doc:name="HTTP">
 			<http:request-builder>
 				<http:header headerName="soapaction" value="&quot;loadVAByEvent&quot;" />
 			</http:request-builder>
+			<http:success-status-code-validator
+				values="200,500" />
 		</http:request>
 		<byte-array-to-string-transformer
 			doc:name="Byte Array to String" />
 		<set-variable value="#[xpath3('//status/message')]"
 			variableName="status" doc:name="Variable" />
-		<set-variable value="#[xpath3('//totalRecords')]" 
+		<set-variable value="#[xpath3('//totalRecords')]"
 			variableName="totalRecords" doc:name="Variable" />
-		
+
 		<choice doc:name="Choice">
 			<when expression="#[flowVars['status'] == 'PROCESSED']">
 				<set-variable value="#[xpath3('//vaRecord/vaEvent/eventName')]"
-						variableName="eventName" doc:name="Variable" />
-				
+					variableName="eventName" doc:name="Variable" />
+				<set-variable value="#[xpath3('//vaRecord/vaEvent/ticketID')]"
+					variableName="ticketID" doc:name="Variable" />
+
 				<set-variable variableName="vaMaps"
 					value="#[new java.util.LinkedList()]" doc:name="Variable" />
 				<foreach collection="#[xpath3('//vaRecord', payload, 'NODESET')]"
@@ -81,7 +122,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					<set-variable
 						value="#[xpath3('//vaRecord' + [counter] + '/referenceNumber')]"
 						variableName="referenceNumber" doc:name="Variable" />
-					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/id')]"
+					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/paymentCode')]"
 						variableName="paymentCode" doc:name="Variable" />
 					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/name')]"
 						variableName="name" doc:name="Variable" />
@@ -90,8 +131,24 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 						variableName="parentUsername" doc:name="Variable" />
 					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/persistent')]"
 						variableName="persistent" doc:name="Variable" />
-					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/description')]"
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/description')]"
 						variableName="description" doc:name="Variable" />
+						
+					<set-variable value="#[xpath3('//vaRecord' + [counter] + '/status')]"
+						variableName="billingStatus" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/transactionDate')]"
+						variableName="transactionDate" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/formattedTransactionDate')]"
+						variableName="formattedTransactionDate" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/transactionNumber')]"
+						variableName="transactionNumber" doc:name="Variable" />
+					<set-variable
+						value="#[xpath3('//vaRecord' + [counter] + '/fullPayment')]"
+						variableName="fullPayment" doc:name="Variable" />
 
 					<expression-transformer
 						expression="#[vaPayload['paymentCode']=flowVars.paymentCode;vaPayload]"
@@ -110,16 +167,26 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 						expression="#[vaPayload['description']=flowVars.description;vaPayload]" />
 					<expression-transformer
 						expression="#[vaPayload['persistent']=flowVars.persistent;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['billingStatus']=flowVars.billingStatus;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['transactionDate']=flowVars.transactionDate;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['transactionNumber']=flowVars.transactionNumber;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['formattedTransactionDate']=flowVars.formattedTransactionDate;vaPayload]" />
+					<expression-transformer
+						expression="#[vaPayload['fullPayment']=flowVars.fullPayment;vaPayload]" />
 					<expression-component doc:name="Expression">
 						<![CDATA[vaMaps.add(vaPayload);]]>
 					</expression-component>
-				</foreach>   
+				</foreach>
 				<expression-component doc:name="Expression">
 					<![CDATA[responseMap = new java.util.HashMap();
 						
 						eventMap = new java.util.HashMap();
 						eventMap['eventName'] = flowVars['eventName'];
-						eventMap['ticketID'] = originalPayload['ticketID'];
+						eventMap['ticketID'] = flowVars['ticketID'];
  						
 						responseMap['status']=org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');	
 						responseMap['totalRecords']=flowVars['totalRecords'];

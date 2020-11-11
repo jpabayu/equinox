@@ -1,21 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.jpa</groupId>
-	<artifactId>Equinox</artifactId>
+	<artifactId>equinox</artifactId>
 	<version>1.0.0-SNAPSHOT</version>
 	<packaging>mule</packaging>
-	<name>Equinox</name>
+	<name>equinox</name>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<project.reporting.outputEncoding>UTF-8
-		</project.reporting.outputEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-		<mule.version>3.7.0</mule.version>
-		<mule.tools.version>1.7</mule.tools.version>
+		<mule.version>3.8.1</mule.version>
+		<mule.tools.version>1.2</mule.tools.version>
 	</properties>
 
 	<build>
@@ -209,6 +207,12 @@
 			<artifactId>mule-transport-udp</artifactId>
 			<version>${mule.version}</version>
 			<scope>provided</scope>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/com.github.jnr/jnr-x86asm -->
+		<dependency>
+			<groupId>com.github.jnr</groupId>
+			<artifactId>jnr-x86asm</artifactId>
+			<version>1.0.2</version>
 		</dependency>
 	</dependencies>
 

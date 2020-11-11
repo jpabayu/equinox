@@ -25,7 +25,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				   <soapenv:Body>
 				      <ser:merchantConfirmPayment>
 				         <otp>' + originalPayload['otp'] + '</otp>
-				         <amount>' + originalPayload['amount'] + '</amount>
+					<amount>' + originalPayload['amount'] + '</amount>
 				      </ser:merchantConfirmPayment>
 				   </soapenv:Body>
 				</soapenv:Envelope>';

@@ -27,7 +27,7 @@
         <div class="col-md-12">
           <div class="col-middle">
             <div class="text-center text-center">
-              <h1 class="error-number">Ooppsss</h1>
+              <h1 class="error-number">Oopppsss,</h1>
               <h2>Mohon maaf,</h2>
               <p>Email verifikasi kamu telah kadaluarsa. Silahkan melakukan verifikasi ulang.
               </p>

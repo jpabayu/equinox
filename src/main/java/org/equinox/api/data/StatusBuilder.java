@@ -37,11 +37,11 @@ public abstract class StatusBuilder {
 		case BLOCKED:
 			return new ResponseStatus("A16", "BLOCKED", "Credential blocked");
 		case UNAUTHORIZED_MEMBER_ACCESS:
-			return new ResponseStatus("M16", "UNAUTHORIZED_MEMBER_ACCESS", "You don't have access to specified member");
+			return new ResponseStatus("M13", "UNAUTHORIZED_MEMBER_ACCESS", "You don't have access to specified member");
 		case MEMBER_NOT_FOUND:
 			return new ResponseStatus("M14", "MEMBER_NOT_FOUND", "Member not found on system");
 		case MEMBER_ALREADY_REGISTERED:
-			return new ResponseStatus("M14", "MEMBER_ALREADY_REGISTERED", "Member already registered on system");
+			return new ResponseStatus("M16", "MEMBER_ALREADY_REGISTERED", "Member already registered on system");
 		case DESTINATION_MEMBER_NOT_FOUND:
 			return new ResponseStatus("M15", "DESTINATION_MEMBER_NOT_FOUND", "Destination member not found on system");
 		case NO_TRANSACTION:
