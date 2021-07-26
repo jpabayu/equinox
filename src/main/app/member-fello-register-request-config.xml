@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<flow name="memberRegisterRequestBPConfigFlow">
+		<set-variable value="#[java.util.UUID.randomUUID().toString()]"
+			variableName="ticketID" doc:name="Variable" />
+		<set-variable variableName="statusResponse" value=""
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+					<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+						   <soapenv:Header>
+						      <ser:headerAuth>
+						         <token>' + flowVars['token'] + '</token>
+						      </ser:headerAuth>
+						   </soapenv:Header>
+						   <soapenv:Body>
+						      <ser:loadMembersByUsername>
+						         <username>' + originalPayload['msisdn'] + '</username>
+						      </ser:loadMembersByUsername>
+						   </soapenv:Body>
+						</soapenv:Envelope>';
+						payload = msg;]]>
+		</expression-component>
+		<set-payload
+			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="members" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="soapaction"
+					value="&quot;loadMembersByUsername&quot;" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<set-variable value="#[payload]" variableName="loginPayload"
+			doc:name="Variable" />
+		<set-variable value="#[xpath3('//status/message')]"
+			variableName="status" doc:name="Variable" />
+		<choice>
+			<when expression="#[flowVars['status'] == 'MEMBER_NOT_FOUND']">
+				<set-variable
+					value="#[org.equinox.api.process.Utils.getRandomNumberInRange(999999)]"
+					variableName="otpnonpad" doc:name="Variable" />
+				<set-variable
+					value="#[org.apache.commons.lang.StringUtils.leftPad(otpnonpad,6,'0')]"
+					variableName="otp" doc:name="Variable" />
+				<set-variable
+					value="62#[org.apache.commons.lang.StringUtils.substring(originalPayload['msisdn'], 1)]"
+					variableName="msisdn" doc:name="Variable" />
+				<expression-component doc:name="Expression">
+							<![CDATA[
+								cacheMap = new java.util.HashMap();
+									cacheMap['otp']= flowVars['otp'];			
+									cacheMap['msisdn']= flowVars['msisdn'];
+								payload = cacheMap;]]>
+				</expression-component>
+				<logger level="INFO" message="Notification OTP: #[payload]" />
+				<vm:outbound-endpoint exchange-pattern="one-way"
+					connector-ref="Notification_VM" path="register.request.notification"
+					doc:name="VM" />
+				<expression-component doc:name="Expression">
+							<![CDATA[
+								cacheMap = new java.util.HashMap();
+									cacheMap['otp'] = flowVars['otp'];			
+									cacheMap['msisdn'] = originalPayload['msisdn'];
+									cacheMap['parentID'] = originalPayload['parentID'];
+									cacheMap['parentUsername'] = originalPayload['parentUsername'];
+									cacheMap['parentName'] = originalPayload['parentName'];
+									cacheMap['name'] = originalPayload['name'];
+									cacheMap['email'] = originalPayload['email'];
+									cacheMap['callbackUrl'] = originalPayload['callbackUrl'];
+									cacheMap['authSecret'] = originalPayload['auth_secret'];
+								payload = cacheMap;]]>
+				</expression-component>
+				<expression-component doc:name="Expression">
+							<![CDATA[
+								regMap = new java.util.HashMap();
+									regMap['methodType']= 'PUT';			
+									regMap['name']= 'RegisterOTPMap';
+									regMap['key']= flowVars['ticketID'] ;
+									regMap['value']= payload;
+								payload = regMap;]]>
+				</expression-component>
+				<pooled-component>
+					<spring-object bean="CacheProcessor" />
+				</pooled-component>
+				<parse-template location="MemberRegistrationOTP.tmp"
+					mimeType="text/html" doc:name="Parse Template" />
+				<set-property propertyName="content-type" value="text/html" />
+			</when>
+			<when expression="#[flowVars['status'] == 'PROCESSED']">
+				<expression-component doc:name="Expression">
+							<![CDATA[
+								msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+									   <soapenv:Header>
+									      <ser:headerAuth>
+									         <token>' + flowVars['token'] + '</token>
+									      </ser:headerAuth>
+									   </soapenv:Header>
+									   <soapenv:Body>
+									      <ser:registerExternalMembers>
+									         <externalMemberFields>
+									            <description>' + originalPayload['parentName'] + '</description>
+									            <externalID>' + originalPayload['msisdn'] + '</externalID>
+									            <parentID>' + originalPayload['parentID'] + '</parentID>
+									            <username>' + originalPayload['msisdn'] + '</username>
+									         </externalMemberFields>
+									      </ser:registerExternalMembers>
+									   </soapenv:Body>
+									</soapenv:Envelope>';
+								payload = msg;]]>
+				</expression-component>
+				<set-payload
+					value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]"
+					doc:name="Set Payload" />
+				<http:request config-ref="HTTP_Request_Configuration"
+					path="members" method="POST" doc:name="HTTP">
+					<http:request-builder>
+						<http:header headerName="soapaction"
+							value="&quot;registerExternalMembers&quot;" />
+					</http:request-builder>
+					<http:success-status-code-validator
+						values="200,500" />
+				</http:request>
+				<byte-array-to-string-transformer
+					doc:name="Byte Array to String" />
+				<!-- Callback to Merchant -->
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						memberMap = new java.util.HashMap();
+						memberMap['msisdn'] = originalPayload['msisdn'];
+						memberMap['parentUsername'] = originalPayload['parentUsername'];
+						memberMap['parentName'] = originalPayload['parentName'];
+						memberMap['name'] = originalPayload['name'];
+						memberMap['email'] = originalPayload['email'];
+						memberMap['callbackUrl'] = originalPayload['callbackUrl'];
+						memberMap['statusResponse'] = 'MEMBER_ALREADY_REGISTERED';
+					payload = memberMap;]]>
+				</expression-component>
+				<flow-ref name="merchantCallbackFlow" />
+			</when>
+			<otherwise>
+				<!-- Callback to Merchant -->
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						memberMap = new java.util.HashMap();
+						memberMap['msisdn'] = originalPayload['msisdn'];
+						memberMap['parentUsername'] = originalPayload['parentUsername'];
+						memberMap['parentName'] = originalPayload['parentName'];
+						memberMap['name'] = originalPayload['name'];
+						memberMap['email'] = originalPayload['email'];
+						memberMap['callbackUrl'] = originalPayload['callbackUrl'];
+						memberMap['statusResponse'] = flowVars['status'];
+					payload = memberMap;]]>
+				</expression-component>
+				<flow-ref name="merchantCallbackFlow" />
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Jatelindo Payment Page - Redirect</title>
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<!--[if lt IE 9]>
+<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>   
+</head>
+
+<body onload="document.formRedirect.submit();">
+	<div>
+		<form action="#[flowVars['callbackUrl']]" method="POST" id="formRedirect" name="formRedirect">
+		<input type="hidden" id="amount" name="amount" value="#[flowVars['amount']]">
+		<input type="hidden" id="traceNumber" name="traceNumber" value="#[flowVars['traceNumber']]">
+		<input type="hidden" id="transactionNumber" name="transactionNumber" value="#[flowVars['transactionNumber']]">
+		<input type="hidden" id="transactionDate" name="transactionDate" value="#[flowVars['transactionDate']]">
+		<input type="hidden" id="description" name="description" value="#[flowVars['description']]">
+		<input type="hidden" id="msisdn" name="msisdn" value="#[flowVars['msisdn']]">
+		<input type="hidden" id="status" name="status" value="#[flowVars['status']]">
+		<input type="hidden" id="requestAuth" name="requestAuth" value="#[flowVars['requestAuth']]">
+		<input type="submit" id="btn">
+		</form>				
+	</div>		 
+</body>
+</html>

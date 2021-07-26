@@ -37,6 +37,15 @@ http://www.hazelcast.com/schema/spring http://www.hazelcast.com/schema/spring/ha
 			<hz:map name="OTPRequestMap" read-backup-data="true"
 				time-to-live-seconds="3600">
 			</hz:map>
+			<hz:map name="TokenMap" read-backup-data="true"
+				time-to-live-seconds="86400">
+			</hz:map>
+			<hz:map name="RegisterOTPMap" read-backup-data="true"
+				time-to-live-seconds="3600">
+			</hz:map>
+			<hz:map name="PurchaseOTPMap" read-backup-data="true"
+				time-to-live-seconds="3600">
+			</hz:map>
 		</hz:config>
 	</hz:hazelcast>
 

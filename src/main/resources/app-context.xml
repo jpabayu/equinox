@@ -23,6 +23,7 @@ http://www.springframework.org/schema/tx http://www.springframework.org/schema/t
 	</bean>
 
 	<bean id="HashValidation" class="org.equinox.api.auth.HashValidation" />
+	<bean id="HashEncoder" class="org.equinox.api.auth.HashEncoder" />
 	<bean id="Configurator" class="org.equinox.api.process.Configurator" />
 
 	<bean id="CacheProcessor" class="org.equinox.api.process.CacheProcessor">

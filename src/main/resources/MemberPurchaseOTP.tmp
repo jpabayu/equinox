@@ -6,7 +6,7 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>FELLO Login</title>
+        <title>FELLO Purchase</title>
 
 <!-- CSS -->
 
@@ -527,17 +527,16 @@ img { max-width: 100%; }
                     <div class="row">
                         <div class="col-sm-6 col-sm-offset-3 form-box">
                         	<div>
-                            <h1>Login to FELLO</h1>
+                            <h1>FELLO Purchase</h1>
           					<p><h3><font size="2" color="gray">Enter your OTP below</font></h3></p>
  			          		<hr />
                             </div>
                             <div class="form-bottom">
-			                    <form role="form" action="ConfirmMemberSubscription" method="post" class="login-form">
+			                    <form role="form" action="OTP" method="post" class="login-form">
 			                    	<div class="form-group">
-			                    		<label class="sr-only" for="form-username">OTP</label>
-			                        	<input type="password" name="form-otp" placeholder="OTP" class="form-username form-control" id="form-otp">
-			                         <input type="hidden" name="form-parentid" id="form-parentid" value="#[flowVars.parentID]">
-			                         <input type="hidden" name="form-username" id="form-username" value="#[flowVars.username]">
+			                    		<center><span style="border:none; box-shadow: none; font-size: 12; color:red;">#[flowVars.statusResponse]</span></center>
+			                    		<label class="sr-only" for="form-otp">OTP</label>
+			                        	<input type="password" name="form-otp" placeholder="OTP" class="form-otp form-control" id="form-otp">
 			                         <input type="hidden" name="form-ticketid" id="form-ticketid" value="#[flowVars.ticketID]">
 			                        </div>
 			                        <button type="submit" class="btn">Submit</button>

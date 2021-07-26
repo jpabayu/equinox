@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<flow name="memberRegisterRequestValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['msisdn'] != null]" />
+				<expression-filter expression="#[originalPayload['name'] != null]" />
+				<expression-filter expression="#[originalPayload['callbackUrl'] != null]" />
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+			</and-filter>
+		</message-filter>
+
+		<flow-ref name="tokenValidation" />
+		<choice>
+			<when expression="#[payload == 'ALLOWED']">
+				<choice>
+					<when expression="#[originalPayload['validateHash'] == true]">
+						<choice>
+							<when
+								expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload.'requestAuth')]">
+								<flow-ref name="hashValidation" />
+								<choice>
+									<when expression="#[payload == 'ALLOWED']">
+										<set-payload value="#[originalPayload]" />
+										<flow-ref name="memberRegisterRequestBPConfigFlow" />
+									</when>
+									<otherwise>
+										<set-payload value="#[originalPayload]" />
+										<set-variable value="INVALID_SIGNATURE"
+											variableName="statusResponse" doc:name="Variable" />
+										<expression-transformer
+											expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
+											doc:name="Expression" />
+										<flow-ref name="merchantCallbackFlow" />
+									</otherwise>
+								</choice>
+							</when>
+							<otherwise>
+								<set-payload value="#[originalPayload]" />
+								<set-variable value="INVALID_PARAMETER"
+									variableName="statusResponse" doc:name="Variable" />
+								<expression-transformer
+									expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
+									doc:name="Expression" />
+								<flow-ref name="merchantCallbackFlow" />
+							</otherwise>
+						</choice>
+					</when>
+					<otherwise>
+						<logger level="DEBUG" message="[SKIP HASH Validation]" />
+						<set-payload value="#[originalPayload]" />
+						<flow-ref name="memberRegisterRequestBPConfigFlow" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<set-payload value="#[originalPayload]" />
+				<set-variable value="SESSION_EXPIRED" variableName="statusResponse"
+					doc:name="Variable" />
+				<expression-transformer
+					expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
+					doc:name="Expression" />
+				<flow-ref name="merchantCallbackFlow" />
+			</otherwise>
+		</choice>
+	</flow>
+
+	<flow name="merchantCallbackFlow">
+		<set-variable variableName="originalPayload" value="#[payload]"
+			doc:name="Variable" />
+		<choice>
+			<when expression="#[originalPayload['authSecret'] == null]">
+				<set-variable value="#[originalPayload['requestAuth']]"
+					variableName="requestAuth" doc:name="Variable" />
+			</when>
+			<otherwise>
+				<set-variable
+					value="/amount=#[originalPayload['amount']]/description=#[originalPayload['description']]/msisdn=#[originalPayload['msisdn']]/status=#[originalPayload['statusResponse']]/traceNumber=#[originalPayload['traceNumber']]/transactionDate=#[originalPayload['transactionDate']]/transactionNumber=#[originalPayload['transactionNumber']]"
+					variableName="requestAuthContent" doc:name="Variable" />
+				<set-variable variableName="auth_secret"
+					value="#[originalPayload['authSecret']]" doc:name="Variable" />
+				<pooled-component>
+					<spring-object bean="HashEncoder" />
+				</pooled-component>
+				<set-variable value="#[payload]" variableName="requestAuth"
+					doc:name="Variable" />
+			</otherwise>
+		</choice>
+		<set-variable variableName="callbackUrl"
+			value="#[new URL(originalPayload['callbackUrl']);]" doc:name="Variable" />
+		<set-variable value="#[originalPayload['msisdn']]"
+			variableName="msisdn" doc:name="Variable" />
+		<set-variable value="#[originalPayload['name']]"
+			variableName="name" doc:name="Variable" />
+		<set-variable value="#[originalPayload['email']]"
+			variableName="email" doc:name="Variable" />
+		<set-variable value="#[originalPayload['parentID']]"
+			variableName="parentID" doc:name="Variable" />
+		<set-variable value="#[originalPayload['parentUsername']]"
+			variableName="parentUsername" doc:name="Variable" />
+		<set-variable value="#[originalPayload['parentName']]"
+			variableName="parentName" doc:name="Variable" />
+		<set-variable value="#[originalPayload['statusResponse']]"
+			variableName="status" doc:name="Variable" />
+
+		<logger level="INFO" message="Callback Payload : #[payload]" />
+		<parse-template location="MemberRegisterRedirect.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<set-property propertyName="content-type" value="text/html" />
+	</flow>
+</mule>

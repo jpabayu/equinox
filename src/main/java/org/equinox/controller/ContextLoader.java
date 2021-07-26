@@ -12,7 +12,7 @@ public class ContextLoader {
 
 	@Value("${api.host.url}")
 	private String hostURL;
-
+	
 	public String getHostURL() {
 		return hostURL;
 	}
