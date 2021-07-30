@@ -144,6 +144,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						memberMap['email'] = originalPayload['email'];
 						memberMap['callbackUrl'] = originalPayload['callbackUrl'];
 						memberMap['statusResponse'] = 'MEMBER_ALREADY_REGISTERED';
+						memberMap['authSecret'] = originalPayload['auth_secret'];
 					payload = memberMap;]]>
 				</expression-component>
 				<flow-ref name="merchantCallbackFlow" />
@@ -160,6 +161,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						memberMap['email'] = originalPayload['email'];
 						memberMap['callbackUrl'] = originalPayload['callbackUrl'];
 						memberMap['statusResponse'] = flowVars['status'];
+						memberMap['authSecret'] = originalPayload['auth_secret'];
 					payload = memberMap;]]>
 				</expression-component>
 				<flow-ref name="merchantCallbackFlow" />

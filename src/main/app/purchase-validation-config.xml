@@ -26,7 +26,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 		<choice>
 			<when expression="#[payload == 'ALLOWED']">
 				<set-variable
-					value="#[defaultTransferTypeID = (originalPayload['transferTypeID'] == '') ? globalConfig['default.charge.trx.id'] : originalPayload['transferTypeID']]"
+					value="#[defaultTransferTypeID = (originalPayload['transferTypeID'] == null) ? globalConfig['default.charge.trx.id'] : originalPayload['transferTypeID']]"
 					variableName="defaultTransferTypeID" doc:name="Variable" />
 				<expression-transformer
 					expression="#[originalPayload['defaultTransferTypeID']=flowVars['defaultTransferTypeID'];originalPayload]"
