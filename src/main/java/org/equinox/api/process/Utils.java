@@ -10,11 +10,16 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
+import org.apache.log4j.Logger;
 
 public abstract class Utils {
+	private static Logger logger = Logger.getLogger(Utils.class);
 
 	public static String formatAmount(BigDecimal amount) {
 		DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.getDefault());
@@ -86,6 +91,10 @@ public abstract class Utils {
 		LocalDateTime nextTime = LocalDateTime.now().plusHours(hourAdd);
 		return nextTime.toString();
 	}
-
 	
+	public static boolean validateString(String s, String regex) {
+		Pattern p = Pattern.compile(regex);
+		Matcher m = p.matcher(s);
+		return m.matches();
+	}
 }

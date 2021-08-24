@@ -3,11 +3,10 @@
 <mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
 	xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
-http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
 
 	<flow name="memberPurchaseRequestFlow">
@@ -102,7 +101,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Variable" />
 		<set-variable value="#[payload['otp']]" variableName="otpCache"
 			doc:name="Variable" />
-		<choice>
+		<choice doc:name="Choice">
 			<when expression="#[flowVars['otpCache'] == flowVars['otp']]">
 				<expression-component doc:name="Expression">
 					<![CDATA[
@@ -152,7 +151,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					mimeType="text/html" doc:name="Parse Template" />
 			</otherwise>
 		</choice>
-		<set-property propertyName="content-type" value="text/html" />
+		<set-property propertyName="content-type" value="text/html"
+			doc:name="Property" />
 	</flow>
 
 	<flow name="memberPurchaseCredentialFlow">
@@ -232,7 +232,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Byte Array to String" />
 		<set-variable value="#[xpath3('//status/message')]"
 			variableName="status" doc:name="Variable" />
-		<choice>
+		<choice doc:name="Choice">
 			<when expression="#[flowVars['status'] == 'VALID']">
 				<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
 					doc:name="Variable" />
@@ -290,75 +290,124 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 				<choice doc:name="Choice">
 					<when expression="#[flowVars['status'] == 'PROCESSED']">
 						<expression-component doc:name="Expression">
-									<![CDATA[
-										regMap = new java.util.HashMap();
-										regMap['methodType']= 'DELETE';			
-										regMap['name']= 'CredentialTokenMap';
-										regMap['key']= flowVars['ticketID'];
-									payload = regMap;]]>
+							<![CDATA[
+								regMap = new java.util.HashMap();
+								regMap['methodType']= 'DELETE';			
+								regMap['name']= 'CredentialTokenMap';
+								regMap['key']= flowVars['ticketID'];
+							payload = regMap;]]>
+						</expression-component>
+						<pooled-component>
+							<spring-object bean="CacheProcessor" />
+						</pooled-component>
+						<set-variable
+							value="62#[org.apache.commons.lang.StringUtils.substring(flowVars['msisdn'], 1)]"
+							variableName="msisdn" doc:name="Variable" />
+						<expression-component doc:name="Expression">
+							<![CDATA[
+								cacheMap = new java.util.HashMap();
+								cacheMap['msisdn'] = flowVars['msisdn'];
+								cacheMap['parentName'] = flowVars['parentName'];
+								cacheMap['amount'] = flowVars['amount'];
+								cacheMap['transactionDate'] = org.equinox.api.process.Utils.GetCurrentDate();
+								cacheMap['transactionNumber'] = flowVars['transactionNumber'];
+							payload = cacheMap;]]>
+						</expression-component>
+						<logger level="INFO" message="Notification Purchase: #[payload]"
+							doc:name="Logger" />
+						<vm:outbound-endpoint exchange-pattern="one-way"
+							connector-ref="Notification_VM" path="purchase.success.notification"
+							doc:name="VM" />
+						<!-- Callback to Merchant -->
+						<expression-component doc:name="Expression">
+							<![CDATA[
+								memberMap = new java.util.HashMap();
+								memberMap['msisdn'] = flowVars['msisdn'];
+								memberMap['parentUsername'] = flowVars['parentUsername'];
+								memberMap['parentName'] = flowVars['parentName'];
+								memberMap['amount'] = flowVars['amount'];
+								memberMap['traceNumber'] = flowVars['traceNumber'];
+								memberMap['description'] = flowVars['description'];
+								memberMap['transactionNumber'] = flowVars['transactionNumber'];
+								memberMap['transactionDate'] = org.equinox.api.process.Utils.GetCurrentDate();
+								memberMap['callbackUrl'] = flowVars['callbackUrl'];
+								memberMap['authSecret'] = flowVars['authSecret'];
+								memberMap['statusResponse'] = 'PROCESSED';
+							payload = memberMap;]]>
+						</expression-component>
+						<flow-ref name="paymentCallback" doc:name="Flow Reference" />
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression">
+							<![CDATA[
+								regMap = new java.util.HashMap();
+								regMap['methodType']= 'DELETE';			
+								regMap['name']= 'CredentialTokenMap';
+								regMap['key']= flowVars['ticketID'];
+							payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
 							<spring-object bean="CacheProcessor" />
 						</pooled-component>
 						<!-- Callback to Merchant -->
 						<expression-component doc:name="Expression">
-									<![CDATA[
-										memberMap = new java.util.HashMap();
-										memberMap['msisdn'] = flowVars['msisdn'];
-										memberMap['parentUsername'] = flowVars['parentUsername'];
-										memberMap['parentName'] = flowVars['parentName'];
-										memberMap['amount'] = flowVars['amount'];
-										memberMap['traceNumber'] = flowVars['traceNumber'];
-										memberMap['description'] = flowVars['description'];
-										memberMap['transactionNumber'] = flowVars['transactionNumber'];
-										memberMap['transactionDate'] = org.equinox.api.process.Utils.GetCurrentDate();
-										memberMap['callbackUrl'] = flowVars['callbackUrl'];
-										memberMap['authSecret'] = flowVars['authSecret'];
-										memberMap['statusResponse'] = 'PROCESSED';
-									payload = memberMap;]]>
+							<![CDATA[
+								memberMap = new java.util.HashMap();
+								memberMap['msisdn'] = flowVars['msisdn'];
+								memberMap['parentUsername'] = flowVars['parentUsername'];
+								memberMap['parentName'] = flowVars['parentName'];
+								memberMap['amount'] = flowVars['amount'];
+								memberMap['traceNumber'] = flowVars['traceNumber'];
+								memberMap['description'] = flowVars['description'];
+								memberMap['transactionNumber'] = flowVars['transactionNumber'];
+								memberMap['callbackUrl'] = flowVars['callbackUrl'];
+								memberMap['authSecret'] = flowVars['authSecret'];
+								memberMap['statusResponse'] = flowVars['status'];
+							payload = memberMap;]]>
 						</expression-component>
-						<flow-ref name="paymentCallback" />
-					</when>
-					<otherwise>
-						<expression-component doc:name="Expression">
-									<![CDATA[
-										regMap = new java.util.HashMap();
-										regMap['methodType']= 'DELETE';			
-										regMap['name']= 'CredentialTokenMap';
-										regMap['key']= flowVars['ticketID'];
-									payload = regMap;]]>
-						</expression-component>
-						<pooled-component>
-							<spring-object bean="CacheProcessor" />
-						</pooled-component>
-						<expression-component doc:name="Expression">
-									<![CDATA[
-										memberMap = new java.util.HashMap();
-										memberMap['msisdn'] = flowVars['msisdn'];
-										memberMap['parentUsername'] = flowVars['parentUsername'];
-										memberMap['parentName'] = flowVars['parentName'];
-										memberMap['amount'] = flowVars['amount'];
-										memberMap['traceNumber'] = flowVars['traceNumber'];
-										memberMap['description'] = flowVars['description'];
-										memberMap['transactionNumber'] = flowVars['transactionNumber'];
-										memberMap['callbackUrl'] = flowVars['callbackUrl'];
-										memberMap['authSecret'] = flowVars['authSecret'];
-										memberMap['statusResponse'] = flowVars['status'];
-									payload = memberMap;]]>
-						</expression-component>
-						<flow-ref name="paymentCallback" />
+						<flow-ref name="paymentCallback" doc:name="Flow Reference" />
 					</otherwise>
 				</choice>
 			</when>
-			<otherwise>
+			<when expression="#[flowVars['status'] == 'INVALID']">
 				<set-variable variableName="statusResponse" value="PIN Incorrect"
 					doc:name="Variable" />
 				<parse-template location="MemberPurchaseCredentials.tmp"
 					mimeType="text/html" doc:name="Parse Template" />
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						regMap = new java.util.HashMap();
+						regMap['methodType']= 'DELETE';			
+						regMap['name']= 'CredentialTokenMap';
+						regMap['key']= flowVars['ticketID'];
+					payload = regMap;]]>
+				</expression-component>
+				<pooled-component>
+					<spring-object bean="CacheProcessor" />
+				</pooled-component>
+				<!-- Callback to Merchant -->
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						memberMap = new java.util.HashMap();
+						memberMap['msisdn'] = flowVars['msisdn'];
+						memberMap['parentUsername'] = flowVars['parentUsername'];
+						memberMap['parentName'] = flowVars['parentName'];
+						memberMap['amount'] = flowVars['amount'];
+						memberMap['traceNumber'] = flowVars['traceNumber'];
+						memberMap['description'] = flowVars['description'];
+						memberMap['transactionNumber'] = flowVars['transactionNumber'];
+						memberMap['callbackUrl'] = flowVars['callbackUrl'];
+						memberMap['authSecret'] = flowVars['authSecret'];
+						memberMap['statusResponse'] = 'MEMBER_BLOCKED';
+					payload = memberMap;]]>
+				</expression-component>
+				<flow-ref name="paymentCallback" doc:name="Flow Reference" />
 			</otherwise>
 		</choice>
-
-		<set-property propertyName="content-type" value="text/html" />
+		<set-property propertyName="content-type" value="text/html"
+			doc:name="Property" />
 	</flow>
 
 	<flow name="merchantPurchaseNotifFlow">
@@ -387,6 +436,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 
 		<parse-template location="MerchantPurchaseNotif.tmp"
 			mimeType="text/html" doc:name="Parse Template" />
-		<set-property propertyName="content-type" value="text/html" />
+		<set-property propertyName="content-type" value="text/html"
+			doc:name="Property" />
 	</flow>
 </mule>

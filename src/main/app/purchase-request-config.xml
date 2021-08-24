@@ -3,11 +3,11 @@
 <mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
 	xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
-http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
 
 	<flow name="memberPurchaseRequestBPFlow">
@@ -63,15 +63,15 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 		<set-variable value="#[xpath3('//toMember/name')]"
 			variableName="toMember" doc:name="Variable" />
 
-		<choice>
+		<choice doc:name="Choice">
 			<when expression="#[flowVars['status'] == 'PROCESSED']">
-				<flow-ref name="globalConfigFlow" />
+				<flow-ref name="globalConfigFlow" doc:name="Flow Reference"/>
 				
-				<logger level="INFO" message="Two Factor Auth: #[globalConfig['two.factor.amount.treshold']]"/>
-				<choice>
+				<logger level="INFO" message="Two Factor Auth: #[globalConfig['two.factor.amount.treshold']]" doc:name="Logger"/>
+				<choice doc:name="Choice">
 					<when
 						expression="#[flowVars['finalAmount'] >= globalConfig['two.factor.amount.treshold']]">
-						<logger level="INFO" message="Validate Two Factor Auth : true" />
+						<logger level="INFO" message="Validate Two Factor Auth : true" doc:name="Logger"/>
 						<set-variable
 							value="#[org.equinox.api.process.Utils.getRandomNumberInRange(999999)]"
 							variableName="otpnonpad" doc:name="Variable" />
@@ -88,7 +88,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 									cacheMap['msisdn']= flowVars['msisdn'];
 								payload = cacheMap;]]>
 						</expression-component>
-						<logger level="INFO" message="Notification OTP: #[payload]" />
+						<logger level="INFO" message="Notification OTP: #[payload]" doc:name="Logger"/>
 						<vm:outbound-endpoint exchange-pattern="one-way"
 							connector-ref="Notification_VM" path="register.request.notification"
 							doc:name="VM" />
@@ -104,7 +104,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 									cacheMap['callbackUrl'] = originalPayload['callbackUrl'];
 									cacheMap['transferTypeID'] = originalPayload['defaultTransferTypeID'];
 									cacheMap['traceNumber'] = originalPayload['traceNumber'];
-									cacheMap['description'] = originalPayload['defaultDescription'];
+									cacheMap['description'] = originalPayload['description'];
 									cacheMap['authSecret'] = originalPayload['auth_secret'];
 								payload = cacheMap;]]>
 						</expression-component>
@@ -122,7 +122,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						</pooled-component>
 						<parse-template location="MemberPurchaseOTP.tmp"
 							mimeType="text/html" doc:name="Parse Template" />
-						<set-property propertyName="content-type" value="text/html" />
+						<set-property propertyName="content-type" value="text/html" doc:name="Property"/>
 					</when>
 					<otherwise>
 						<expression-component doc:name="Expression">
@@ -136,7 +136,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 									cacheMap['callbackUrl'] = originalPayload['callbackUrl'];
 									cacheMap['transferTypeID'] = originalPayload['defaultTransferTypeID'];
 									cacheMap['traceNumber'] = originalPayload['traceNumber'];
-									cacheMap['description'] = originalPayload['defaultDescription'];
+									cacheMap['description'] = originalPayload['description'];
 									cacheMap['authSecret'] = originalPayload['auth_secret'];
 								payload = cacheMap;]]>
 						</expression-component>
@@ -154,19 +154,19 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						</pooled-component>
 						<parse-template location="MemberPurchaseCredentials.tmp"
 							mimeType="text/html" doc:name="Parse Template" />
-						<set-property propertyName="content-type" value="text/html" />
+						<set-property propertyName="content-type" value="text/html" doc:name="Property"/>
 					</otherwise>
 				</choice>
 			</when>
 			<otherwise>
 				<!-- Callback to Merchant -->
-				<set-payload value="#[originalPayload]" />
+				<set-payload value="#[originalPayload]" doc:name="Set Payload"/>
 				<set-variable value="#[flowVars['status']]"
 					variableName="statusResponse" doc:name="Variable" />
 				<expression-transformer
 					expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
 					doc:name="Expression" />
-				<flow-ref name="paymentCallback" />
+				<flow-ref name="paymentCallback" doc:name="Flow Reference"/>
 			</otherwise>
 		</choice>
 	</flow>
@@ -183,7 +183,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 		<pooled-component>
 			<spring-object bean="CacheProcessor" />
 		</pooled-component>
-		<choice>
+		<choice doc:name="Choice">
 			<when expression="#[payload == null]">
 				<expression-component doc:name="Expression">
 						<![CDATA[
@@ -198,7 +198,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						payload = msg;]]>
 				</expression-component>
 				<set-payload
-					value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]" />
+					value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]" doc:name="Set Payload"/>
 				<http:request config-ref="HTTP_Request_Configuration"
 					path="globalconfig" method="POST" doc:name="HTTP">
 					<http:request-builder>
@@ -248,7 +248,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			<otherwise>
 				<set-variable variableName="globalConfig" value="#[payload]"
 					doc:name="Variable" />
-				<logger level="INFO" message="[USING Cached Global Config]" />
+				<logger level="INFO" message="[USING Cached Global Config]" doc:name="Logger"/>
 			</otherwise>
 		</choice>
 	</flow>

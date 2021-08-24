@@ -25,7 +25,43 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		<expression-component doc:name="Expression">
 			<![CDATA[
 			responseMap = new java.util.HashMap();
-			responseMap['text']= 'Gunakan OTP : ' + payload.otp + ' berlaku 15 menit. JAGA KERAHASIAAN PIN OTP ANDA, JANGAN DISAMPAIKAN KEPADA SIAPAPUN TERMASUK PETUGAS OPTIMA';
+			responseMap['text']= 'Gunakan OTP : ' + payload.otp + ' berlaku 15 menit. JAGA KERAHASIAAN PIN OTP ANDA, JANGAN DISAMPAIKAN KEPADA SIAPAPUN TERMASUK PETUGAS FELLO';
+			responseMap['to']= payload.msisdn;
+			responseMap['from']= 'OPTIMA';
+			payload = responseMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="emoney.notification.sms" doc:name="JMS" />
+	</flow>
+	
+	<flow name="registerSuccessNotificationConfigFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="register.success.notification"
+			doc:name="VM" />
+		<logger level="INFO" message="[Register Request Success Notification]"
+			doc:name="Logger" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			responseMap = new java.util.HashMap();
+			responseMap['text']= 'Terimakasih telah registrasi akun: ' + payload.msisdn + ' di FELLO. Jika bukan Anda silahkan menghubungi petugas FELLO.';
+			responseMap['to']= payload.msisdn;
+			responseMap['from']= 'OPTIMA';
+			payload = responseMap;]]>
+		</expression-component>
+		<jms:outbound-endpoint connector-ref="Active_MQ"
+			queue="emoney.notification.sms" doc:name="JMS" />
+	</flow>
+	
+	<flow name="purchaseSuccessNotificationConfigFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			connector-ref="Notification_VM" path="purchase.success.notification"
+			doc:name="VM" />
+		<logger level="INFO" message="[Purchase Success Notification]"
+			doc:name="Logger" />
+		<expression-component doc:name="Expression">
+			<![CDATA[
+			responseMap = new java.util.HashMap();
+			responseMap['text']= 'Transaksi ke ' + payload.parentName + ' Rp ' + payload.amount + ' di FELLO tgl ' + payload.transactionDate + ' BERHASIL. RefNo ' + payload.transactionNumber;
 			responseMap['to']= payload.msisdn;
 			responseMap['from']= 'OPTIMA';
 			payload = responseMap;]]>
