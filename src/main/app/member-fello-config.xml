@@ -343,6 +343,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 				<expression-component doc:name="Expression">
 					<![CDATA[
 						cacheMap = new java.util.HashMap();
+						cacheMap['parentName'] = flowVars['parentName'];
 						cacheMap['msisdn']= flowVars['msisdn'];
 					payload = cacheMap;]]>
 				</expression-component>

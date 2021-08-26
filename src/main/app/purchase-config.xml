@@ -32,6 +32,20 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 		<logger level="INFO"
 			message="[{#[correlationID]} : PURCHASE REQUEST Request = #[originalPayload]]"
 			doc:name="Logger" />
+		<choice>
+			<when expression="#[payload.get('description') == null]">
+				<set-variable value="Purchase fello" variableName="defaultDescription"
+					doc:name="Variable" />
+			</when>
+			<otherwise>
+				<set-variable value="#[originalPayload['description']]"
+					variableName="defaultDescription" doc:name="Variable" />
+			</otherwise>
+		</choice>
+		<expression-transformer
+			expression="#[originalPayload['description']=flowVars['defaultDescription'];originalPayload]"
+			doc:name="Expression" />
+
 		<set-property value="memberPurchaseRequest" propertyName="type"
 			doc:name="Property" />
 		<set-property value="#[correlationID]" propertyName="messageID"

@@ -43,7 +43,7 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		<expression-component doc:name="Expression">
 			<![CDATA[
 			responseMap = new java.util.HashMap();
-			responseMap['text']= 'Terimakasih telah registrasi akun: ' + payload.msisdn + ' di FELLO. Jika bukan Anda silahkan menghubungi petugas FELLO.';
+			responseMap['text']= 'Anda telah berhasil menambahkan FELLO sebagai metode pembayaran di ' + payload.parentName;
 			responseMap['to']= payload.msisdn;
 			responseMap['from']= 'OPTIMA';
 			payload = responseMap;]]>

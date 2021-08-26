@@ -91,7 +91,7 @@ public abstract class Utils {
 		LocalDateTime nextTime = LocalDateTime.now().plusHours(hourAdd);
 		return nextTime.toString();
 	}
-	
+
 	public static boolean validateString(String s, String regex) {
 		Pattern p = Pattern.compile(regex);
 		Matcher m = p.matcher(s);

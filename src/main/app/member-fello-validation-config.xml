@@ -20,30 +20,24 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					<expression-filter expression="#[originalPayload['token'] != null]" />
 				</and-filter>
 
-				<set-variable value="^[\p{L}\s.’\-,]+$" variableName="nameRegex"/>
-				
+				<set-variable value="^[\p{L}\s.’\-,]+$" variableName="nameRegex" />
+
 				<logger level="INFO"
 					message="[ Validate Email: #[validator.validateEmail(originalPayload['email'])] ]" />
 				<logger level="INFO"
 					message="[ Validate Callback Url: #[validator.validateUrl(originalPayload['callbackUrl'])] ]" />
+				<logger level="INFO"
+					message="[ Validate Callback Url: #[org.apache.commons.lang.StringEscapeUtils.escapeHtml(originalPayload['callbackUrl'])] ]" />
 				<logger level="INFO"
 					message="[ Validate MSISDN: #[org.mule.util.StringUtils.isNumeric(originalPayload['msisdn'])] ]" />
 				<logger level="INFO"
 					message="[ Validate Name: #[org.equinox.api.process.Utils.validateString(originalPayload['name'], flowVars['nameRegex'])] ]" />
 
 				<choice doc:name="Choice">
-					<when expression="#[validator.validateUrl(originalPayload['callbackUrl']) == false]">
-						<set-variable variableName="statusResponse" value="INVALID PARAMETER"
-							doc:name="Variable" />
-						<set-variable variableName="description"
-							value="Callback URL Parameter is Invalid" doc:name="Variable" />
-						<set-variable value="404" variableName="httpResponseCode" />
-						<parse-template location="PageException.tmp"
-							mimeType="text/html" doc:name="Parse Template" />
-						<set-property propertyName="content-type" value="text/html" />
-					</when>
 					<when>
 						<and-filter doc:name="And">
+							<expression-filter
+								expression="#[validator.validateUrl(originalPayload['callbackUrl']) == true]" />
 							<expression-filter
 								expression="#[org.mule.util.StringUtils.isNumeric(originalPayload['msisdn']) == true]" />
 							<expression-filter
@@ -122,12 +116,14 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						<logger level="INFO"
 							message="[{#[correlationID]} : MEMBER-REGISTER-VALIDATION Request = Name Length Greater Than 20 or Special Char]"
 							doc:name="Logger" />
-						<set-variable value="INVALID_PARAMETER" variableName="statusResponse"
+						<set-variable variableName="statusResponse" value="INVALID PARAMETER"
 							doc:name="Variable" />
-						<expression-transformer
-							expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
-							doc:name="Expression" />
-						<flow-ref name="merchantCallbackFlow" doc:name="Flow Reference" />
+						<set-variable variableName="description"
+							value="Invalid request parameter" doc:name="Variable" />
+						<set-variable value="400" variableName="httpResponseCode" />
+						<parse-template location="PageException.tmp"
+							mimeType="text/html" doc:name="Parse Template" />
+						<set-property propertyName="content-type" value="text/html" />
 					</otherwise>
 				</choice>
 			</when>
@@ -135,13 +131,14 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 				<logger level="INFO"
 					message="[{#[correlationID]} : MEMBER-REGISTER-VALIDATION Request = Invalid Parameter]"
 					doc:name="Logger" />
-				<set-payload value="#[originalPayload]" doc:name="Set Payload" />
-				<set-variable value="INVALID_PARAMETER" variableName="statusResponse"
+				<set-variable variableName="statusResponse" value="INVALID PARAMETER"
 					doc:name="Variable" />
-				<expression-transformer
-					expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
-					doc:name="Expression" />
-				<flow-ref name="merchantCallbackFlow" doc:name="Flow Reference" />
+				<set-variable variableName="description" value="Invalid request parameter"
+					doc:name="Variable" />
+				<set-variable value="400" variableName="httpResponseCode" />
+				<parse-template location="PageException.tmp"
+					mimeType="text/html" doc:name="Parse Template" />
+				<set-property propertyName="content-type" value="text/html" />
 			</otherwise>
 		</choice>
 	</flow>
@@ -168,7 +165,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			</otherwise>
 		</choice>
 		<set-variable variableName="callbackUrl"
-			value="#[new URL(originalPayload['callbackUrl']);]" doc:name="Variable" />
+			value="#[org.apache.commons.lang.StringEscapeUtils.escapeHtml(originalPayload['callbackUrl']);]" doc:name="Variable" />
 		<set-variable value="#[originalPayload['msisdn']]"
 			variableName="msisdn" doc:name="Variable" />
 		<set-variable value="#[originalPayload['name']]"
