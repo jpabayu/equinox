@@ -46,6 +46,42 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			expression="#[originalPayload['description']=flowVars['defaultDescription'];originalPayload]"
 			doc:name="Expression" />
 
+		<choice>
+			<when expression="#[payload.get('transferTypeID') == null]">
+				<choice>
+					<when expression="#[payload.get('terminalID') == null]">
+						<set-variable value="0" variableName="defaultTransferTypeID"
+							doc:name="Variable" />
+					</when>
+					<otherwise>
+						<set-variable value="0"
+							variableName="defaultTransferTypeID" doc:name="Variable" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<set-variable value="#[originalPayload['transferTypeID']]"
+					variableName="defaultTransferTypeID" doc:name="Variable" />
+			</otherwise>
+		</choice>
+		<expression-transformer
+			expression="#[originalPayload['transferTypeID']=flowVars['defaultTransferTypeID'];originalPayload]"
+			doc:name="Expression" />
+
+		<choice>
+			<when expression="#[payload.get('terminalID') == null]">
+				<set-variable value="0" variableName="defaultTerminalID"
+					doc:name="Variable" />
+			</when>
+			<otherwise>
+				<set-variable value="#[originalPayload['terminalID']]"
+					variableName="defaultTerminalID" doc:name="Variable" />
+			</otherwise>
+		</choice>
+		<expression-transformer
+			expression="#[originalPayload['terminalID']=flowVars['defaultTerminalID'];originalPayload]"
+			doc:name="Expression" />
+
 		<set-property value="memberPurchaseRequest" propertyName="type"
 			doc:name="Property" />
 		<set-property value="#[correlationID]" propertyName="messageID"

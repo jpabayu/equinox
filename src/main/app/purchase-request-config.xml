@@ -16,45 +16,72 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Variable" />
 		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
 			doc:name="Variable" />
-		<expression-component doc:name="Expression">
-		<![CDATA[
-			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
-				   <soapenv:Header>
-				      <ser:headerAuth>
-				         <token>' + flowVars['tokennc'] + '</token>
-				      </ser:headerAuth>
-				   </soapenv:Header>
-				   <soapenv:Body>
-				      <ser:loadTerminalByID>
-				         <terminalID>' + originalPayload['terminalID'] + '</terminalID>
-				         <toMember>' + originalPayload['parentUsername'] + '</toMember>
-				      </ser:loadTerminalByID>
-				   </soapenv:Body>
-				</soapenv:Envelope>';
-			payload = msg;]]>
-		</expression-component>
-		<logger
-			message="[#[flowVars.correlationID] (LOAD TERMINAL ID REQUEST) : #[message.payloadAs(java.lang.String)]]"
-			level="INFO" doc:name="Logger" />
-		<http:request config-ref="HTTP_Request_Configuration"
-			path="pos" method="POST" doc:name="HTTP">
-			<http:request-builder>
-				<http:header headerName="SOAPAction" value="loadTerminalByID" />
-			</http:request-builder>
-		</http:request>
-		<byte-array-to-string-transformer
-			doc:name="Byte Array to String" />
-		<logger
-			message="[#[flowVars.correlationID] (LOAD TERMINAL ID	 RESPONSE) : #[message.payloadAs(java.lang.String)]]"
-			level="INFO" doc:name="Logger" />
-		<set-variable value="#[xpath3('//status/message')]"
-			variableName="status" doc:name="Variable" />
+		<logger message="[tft type id 0 : #[originalPayload['transferTypeID']]]" level="INFO" doc:name="Logger" />
 		<choice>
-			<when expression="#[flowVars['status'] == 'PROCESSED']">
-				<set-variable value="#[xpath3('//terminal/transferTypeID')]"
+			<when expression="#[originalPayload['transferTypeID'] == '0']">
+				<choice>
+					<when expression="#[originalPayload['terminalID'] == '0']">
+						<set-variable value="#[globalConfig['default.charge.trx.id']]"
+							variableName="transferTypeID" />
+						<logger message="[tft type id 1 : #[flowVars['transferTypeID']]]" level="INFO" doc:name="Logger" />
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression">
+							<![CDATA[
+								msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+									   <soapenv:Header>
+									      <ser:headerAuth>
+									         <token>' + flowVars['tokennc'] + '</token>
+									      </ser:headerAuth>
+									   </soapenv:Header>
+									   <soapenv:Body>
+									      <ser:loadTerminalByID>
+									         <terminalID>' + originalPayload['terminalID'] + '</terminalID>
+									         <toMember>' + originalPayload['parentUsername'] + '</toMember>
+									      </ser:loadTerminalByID>
+									   </soapenv:Body>
+									</soapenv:Envelope>';
+								payload = msg;]]>
+						</expression-component>
+						<logger
+							message="[#[flowVars.correlationID] (LOAD TERMINAL ID REQUEST) : #[message.payloadAs(java.lang.String)]]"
+							level="INFO" doc:name="Logger" />
+						<http:request config-ref="HTTP_Request_Configuration"
+							path="pos" method="POST" doc:name="HTTP">
+							<http:request-builder>
+								<http:header headerName="SOAPAction" value="loadTerminalByID" />
+							</http:request-builder>
+						</http:request>
+						<byte-array-to-string-transformer
+							doc:name="Byte Array to String" />
+						<logger
+							message="[#[flowVars.correlationID] (LOAD TERMINAL ID	 RESPONSE) : #[message.payloadAs(java.lang.String)]]"
+							level="INFO" doc:name="Logger" />
+						<set-variable value="#[xpath3('//status/message')]"
+							variableName="status" doc:name="Variable" />
+						<choice>
+							<when expression="#[flowVars['status'] == 'PROCESSED']">
+								<set-variable value="#[xpath3('//terminal/transferTypeID')]"
+									variableName="transferTypeID" />
+								<logger message="[tft type id 2 : #[flowVars['transferTypeID']]]" level="INFO" doc:name="Logger" />
+							</when>
+							<otherwise>
+								<set-variable value="#[globalConfig['default.charge.trx.id']]"
+									variableName="transferTypeID" />
+								<logger message="[tft type id 3 : #[flowVars['transferTypeID']]]" level="INFO" doc:name="Logger" />
+							</otherwise>
+						</choice>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<set-variable value="#[originalPayload['transferTypeID']]"
 					variableName="transferTypeID" />
+				<logger message="[tft type id 4 : #[flowVars['transferTypeID']]]" level="INFO" doc:name="Logger" />
+			</otherwise>
+		</choice>
 
-				<expression-component doc:name="Expression">
+		<expression-component doc:name="Expression">
 				<![CDATA[
 					msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
 		  				 <soapenv:Header>
@@ -67,73 +94,73 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						         <amount>' + originalPayload['amount'] + '</amount>
 						         <fromMember>' + originalPayload['msisdn'] + '</fromMember>
 						         <toMember>' + originalPayload['parentUsername'] + '</toMember>
-						         <transferTypeID>' + originalPayload['transferTypeID'] + '</transferTypeID>
+						         <transferTypeID>' + flowVars['transferTypeID'] + '</transferTypeID>
 						      </ser:doInquiry>
 						   </soapenv:Body>
 						</soapenv:Envelope>';
 					payload = msg;]]>
-				</expression-component>
-				<logger
-					message="[#[flowVars.correlationID] (DO INQUIRY REQUEST) : #[message.payloadAs(java.lang.String)]]"
-					level="INFO" doc:name="Logger" />
-				<http:request config-ref="HTTP_Request_Configuration"
-					path="payments" method="POST" doc:name="HTTP">
-					<http:request-builder>
-						<http:header headerName="SOAPAction" value="doInquiry" />
-					</http:request-builder>
-				</http:request>
-				<byte-array-to-string-transformer
-					doc:name="Byte Array to String" />
-				<logger
-					message="[#[flowVars.correlationID] (DO INQUIRY RESPONSE) : #[message.payloadAs(java.lang.String)]]"
-					level="INFO" doc:name="Logger" />
-				<set-variable value="#[xpath3('//status/message')]"
-					variableName="status" doc:name="Variable" />
-				<set-variable value="#[xpath3('//transactionAmount')]"
-					variableName="amount" doc:name="Variable" />
-				<set-variable value="#[xpath3('//totalFees')]"
-					variableName="totalFees" doc:name="Variable" />
-				<set-variable value="#[xpath3('//finalAmount')]"
-					variableName="finalAmount" doc:name="Variable" />
-				<set-variable value="#[xpath3('//transferType/name')]"
-					variableName="transferName" doc:name="Variable" />
-				<set-variable value="#[xpath3('//toMember/name')]"
-					variableName="toMember" doc:name="Variable" />
+		</expression-component>
+		<logger
+			message="[#[flowVars.correlationID] (DO INQUIRY REQUEST) : #[message.payloadAs(java.lang.String)]]"
+			level="INFO" doc:name="Logger" />
+		<http:request config-ref="HTTP_Request_Configuration"
+			path="payments" method="POST" doc:name="HTTP">
+			<http:request-builder>
+				<http:header headerName="SOAPAction" value="doInquiry" />
+			</http:request-builder>
+		</http:request>
+		<byte-array-to-string-transformer
+			doc:name="Byte Array to String" />
+		<logger
+			message="[#[flowVars.correlationID] (DO INQUIRY RESPONSE) : #[message.payloadAs(java.lang.String)]]"
+			level="INFO" doc:name="Logger" />
+		<set-variable value="#[xpath3('//status/message')]"
+			variableName="status" doc:name="Variable" />
+		<set-variable value="#[xpath3('//transactionAmount')]"
+			variableName="amount" doc:name="Variable" />
+		<set-variable value="#[xpath3('//totalFees')]"
+			variableName="totalFees" doc:name="Variable" />
+		<set-variable value="#[xpath3('//finalAmount')]"
+			variableName="finalAmount" doc:name="Variable" />
+		<set-variable value="#[xpath3('//transferType/name')]"
+			variableName="transferName" doc:name="Variable" />
+		<set-variable value="#[xpath3('//toMember/name')]"
+			variableName="toMember" doc:name="Variable" />
 
+		<choice doc:name="Choice">
+			<when expression="#[flowVars['status'] == 'PROCESSED']">
+				<flow-ref name="globalConfigFlow" doc:name="Flow Reference" />
+
+				<logger level="INFO"
+					message="Two Factor Auth: #[globalConfig['two.factor.amount.treshold']]"
+					doc:name="Logger" />
 				<choice doc:name="Choice">
-					<when expression="#[flowVars['status'] == 'PROCESSED']">
-						<flow-ref name="globalConfigFlow" doc:name="Flow Reference" />
-
-						<logger level="INFO"
-							message="Two Factor Auth: #[globalConfig['two.factor.amount.treshold']]"
+					<when
+						expression="#[flowVars['finalAmount'] >= globalConfig['two.factor.amount.treshold']]">
+						<logger level="INFO" message="Validate Two Factor Auth : true"
 							doc:name="Logger" />
-						<choice doc:name="Choice">
-							<when
-								expression="#[flowVars['finalAmount'] >= globalConfig['two.factor.amount.treshold']]">
-								<logger level="INFO" message="Validate Two Factor Auth : true"
-									doc:name="Logger" />
-								<set-variable
-									value="#[org.equinox.api.process.Utils.getRandomNumberInRange(999999)]"
-									variableName="otpnonpad" doc:name="Variable" />
-								<set-variable
-									value="#[org.apache.commons.lang.StringUtils.leftPad(otpnonpad,6,'0')]"
-									variableName="otp" doc:name="Variable" />
-								<set-variable
-									value="62#[org.apache.commons.lang.StringUtils.substring(originalPayload['msisdn'], 1)]"
-									variableName="msisdn" doc:name="Variable" />
-								<expression-component doc:name="Expression">
+						<set-variable
+							value="#[org.equinox.api.process.Utils.getRandomNumberInRange(999999)]"
+							variableName="otpnonpad" doc:name="Variable" />
+						<set-variable
+							value="#[org.apache.commons.lang.StringUtils.leftPad(otpnonpad,6,'0')]"
+							variableName="otp" doc:name="Variable" />
+						<set-variable
+							value="62#[org.apache.commons.lang.StringUtils.substring(originalPayload['msisdn'], 1)]"
+							variableName="msisdn" doc:name="Variable" />
+						<expression-component doc:name="Expression">
 									<![CDATA[
 										cacheMap = new java.util.HashMap();
 										cacheMap['otp']= flowVars['otp'];			
 										cacheMap['msisdn']= flowVars['msisdn'];
 									payload = cacheMap;]]>
-								</expression-component>
-								<logger level="INFO" message="Notification OTP: #[payload]"
-									doc:name="Logger" />
-								<vm:outbound-endpoint exchange-pattern="one-way"
-									connector-ref="Notification_VM" path="register.request.notification"
-									doc:name="VM" />
-								<expression-component doc:name="Expression">
+						</expression-component>
+						<logger level="INFO" message="Notification OTP: #[payload]"
+							doc:name="Logger" />
+						<vm:outbound-endpoint exchange-pattern="one-way"
+							connector-ref="Notification_VM" path="register.request.notification"
+							doc:name="VM" />
+						<expression-component doc:name="Expression">
 									<![CDATA[
 										cacheMap = new java.util.HashMap();
 										cacheMap['otp'] = flowVars['otp'];			
@@ -148,8 +175,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 										cacheMap['description'] = originalPayload['description'];
 										cacheMap['authSecret'] = originalPayload['auth_secret'];
 									payload = cacheMap;]]>
-								</expression-component>
-								<expression-component doc:name="Expression">
+						</expression-component>
+						<expression-component doc:name="Expression">
 									<![CDATA[
 										regMap = new java.util.HashMap();
 										regMap['methodType']= 'PUT';			
@@ -157,17 +184,17 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 										regMap['key']= flowVars['ticketID'] ;
 										regMap['value']= payload;
 									payload = regMap;]]>
-								</expression-component>
-								<pooled-component>
-									<spring-object bean="CacheProcessor" />
-								</pooled-component>
-								<parse-template location="MemberPurchaseOTP.tmp"
-									mimeType="text/html" doc:name="Parse Template" />
-								<set-property propertyName="content-type" value="text/html"
-									doc:name="Property" />
-							</when>
-							<otherwise>
-								<expression-component doc:name="Expression">
+						</expression-component>
+						<pooled-component>
+							<spring-object bean="CacheProcessor" />
+						</pooled-component>
+						<parse-template location="MemberPurchaseOTP.tmp"
+							mimeType="text/html" doc:name="Parse Template" />
+						<set-property propertyName="content-type" value="text/html"
+							doc:name="Property" />
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression">
 									<![CDATA[
 										cacheMap = new java.util.HashMap();
 										cacheMap['msisdn'] = originalPayload['msisdn'];
@@ -176,13 +203,13 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 										cacheMap['parentName'] = originalPayload['parentName'];
 										cacheMap['amount'] = flowVars['finalAmount'];
 										cacheMap['callbackUrl'] = originalPayload['callbackUrl'];
-										cacheMap['transferTypeID'] = originalPayload['defaultTransferTypeID'];
+										cacheMap['transferTypeID'] = flowVars['transferTypeID'];
 										cacheMap['traceNumber'] = originalPayload['traceNumber'];
 										cacheMap['description'] = originalPayload['description'];
 										cacheMap['authSecret'] = originalPayload['auth_secret'];
 									payload = cacheMap;]]>
-								</expression-component>
-								<expression-component doc:name="Expression">
+						</expression-component>
+						<expression-component doc:name="Expression">
 									<![CDATA[
 										regMap = new java.util.HashMap();
 										regMap['methodType']= 'PUT';			
@@ -190,26 +217,14 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 										regMap['key']= flowVars['ticketID'] ;
 										regMap['value']= payload;
 									payload = regMap;]]>
-								</expression-component>
-								<pooled-component>
-									<spring-object bean="CacheProcessor" />
-								</pooled-component>
-								<parse-template location="MemberPurchaseCredentials.tmp"
-									mimeType="text/html" doc:name="Parse Template" />
-								<set-property propertyName="content-type" value="text/html"
-									doc:name="Property" />
-							</otherwise>
-						</choice>
-					</when>
-					<otherwise>
-						<!-- Callback to Merchant -->
-						<set-payload value="#[originalPayload]" doc:name="Set Payload" />
-						<set-variable value="#[flowVars['status']]"
-							variableName="statusResponse" doc:name="Variable" />
-						<expression-transformer
-							expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
-							doc:name="Expression" />
-						<flow-ref name="paymentCallback" doc:name="Flow Reference" />
+						</expression-component>
+						<pooled-component>
+							<spring-object bean="CacheProcessor" />
+						</pooled-component>
+						<parse-template location="MemberPurchaseCredentials.tmp"
+							mimeType="text/html" doc:name="Parse Template" />
+						<set-property propertyName="content-type" value="text/html"
+							doc:name="Property" />
 					</otherwise>
 				</choice>
 			</when>

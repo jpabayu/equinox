@@ -17,7 +17,6 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					<expression-filter expression="#[originalPayload['amount'] != null]" />
 					<expression-filter expression="#[originalPayload['callbackUrl'] != null]" />
 					<expression-filter expression="#[originalPayload['traceNumber'] != null]" />
-					<expression-filter expression="#[originalPayload['terminalID'] != null]" />
 					<expression-filter expression="#[originalPayload['token'] != null]" />
 				</and-filter>
 				<set-variable value="^[a-zA-Z0-9\- ]+$" variableName="descRegex" />
