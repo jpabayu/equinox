@@ -77,6 +77,11 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 														<expression-transformer
 															expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
 															doc:name="Expression" />
+														<set-variable value="#[payload['auth_secret']]"
+															variableName="authSecret" doc:name="Variable" />
+														<expression-transformer
+															expression="#[originalPayload['authSecret']=flowVars['authSecret'];originalPayload]"
+															doc:name="Expression" />
 														<flow-ref name="paymentCallback" doc:name="Flow Reference" />
 													</otherwise>
 												</choice>
@@ -88,6 +93,11 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 													variableName="statusResponse" doc:name="Variable" />
 												<expression-transformer
 													expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
+													doc:name="Expression" />
+												<set-variable value="#[payload['auth_secret']]"
+													variableName="authSecret" doc:name="Variable" />
+												<expression-transformer
+													expression="#[originalPayload['authSecret']=flowVars['authSecret'];originalPayload]"
 													doc:name="Expression" />
 												<flow-ref name="paymentCallback" doc:name="Flow Reference" />
 											</otherwise>
@@ -198,5 +208,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			mimeType="text/html" doc:name="Parse Template" />
 		<set-property propertyName="content-type" value="text/html"
 			doc:name="Property" />
+		<logger level="INFO" message="[PURCHASE CALLBACK Response = #[payload]]"
+			doc:name="Logger" />
 	</flow>
 </mule>

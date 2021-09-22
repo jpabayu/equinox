@@ -96,9 +96,6 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Property" />
 		<vm:outbound-endpoint exchange-pattern="one-way"
 			path="log.response" connector-ref="GrayLog_VM" doc:name="VM" />
-		<logger level="INFO"
-			message="[{#[correlationID]} PURCHASE REQUEST Response = #[payload]]"
-			doc:name="Logger" />
 		<exception-strategy ref="sessionException"
 			doc:name="Reference Exception Strategy" />
 	</flow>
@@ -176,7 +173,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						cacheMap['transferTypeID'] = flowVars['transferTypeID'];
 						cacheMap['traceNumber'] = flowVars['traceNumber'];
 						cacheMap['description'] = flowVars['description'];
-						cacheMap['authSecret'] = flowVars['auth_secret'];
+						cacheMap['authSecret'] = flowVars['authSecret'];
 					payload = cacheMap;]]>
 				</expression-component>
 				<expression-component doc:name="Expression">

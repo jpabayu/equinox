@@ -72,6 +72,11 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 														<expression-transformer
 															expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
 															doc:name="Expression" />
+														<set-variable value="#[payload['auth_secret']]"
+															variableName="authSecret" doc:name="Variable" />
+														<expression-transformer
+															expression="#[originalPayload['authSecret']=flowVars['authSecret'];originalPayload]"
+															doc:name="Expression" />
 														<flow-ref name="merchantCallbackFlow" doc:name="Flow Reference" />
 													</otherwise>
 												</choice>
@@ -86,6 +91,11 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 													variableName="statusResponse" doc:name="Variable" />
 												<expression-transformer
 													expression="#[originalPayload['statusResponse']=flowVars['statusResponse'];originalPayload]"
+													doc:name="Expression" />
+												<set-variable value="#[payload['auth_secret']]"
+													variableName="authSecret" doc:name="Variable" />
+												<expression-transformer
+													expression="#[originalPayload['authSecret']=flowVars['authSecret'];originalPayload]"
 													doc:name="Expression" />
 												<flow-ref name="merchantCallbackFlow" doc:name="Flow Reference" />
 											</otherwise>
@@ -153,7 +163,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			</when>
 			<otherwise>
 				<set-variable
-					value="/amount=#[originalPayload['amount']]/description=#[originalPayload['description']]/msisdn=#[originalPayload['msisdn']]/status=#[originalPayload['statusResponse']]/traceNumber=#[originalPayload['traceNumber']]/transactionDate=#[originalPayload['transactionDate']]/transactionNumber=#[originalPayload['transactionNumber']]"
+					value="/email=#[originalPayload['email']]/name=#[originalPayload['name']]/msisdn=#[originalPayload['msisdn']]/status=#[originalPayload['statusResponse']]"
 					variableName="requestAuthContent" doc:name="Variable" />
 				<set-variable variableName="auth_secret"
 					value="#[originalPayload['authSecret']]" doc:name="Variable" />
@@ -165,7 +175,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			</otherwise>
 		</choice>
 		<set-variable variableName="callbackUrl"
-			value="#[org.apache.commons.lang.StringEscapeUtils.escapeHtml(originalPayload['callbackUrl']);]" doc:name="Variable" />
+			value="#[org.apache.commons.lang.StringEscapeUtils.escapeHtml(originalPayload['callbackUrl']);]"
+			doc:name="Variable" />
 		<set-variable value="#[originalPayload['msisdn']]"
 			variableName="msisdn" doc:name="Variable" />
 		<set-variable value="#[originalPayload['name']]"
@@ -181,11 +192,11 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 		<set-variable value="#[originalPayload['statusResponse']]"
 			variableName="status" doc:name="Variable" />
 
-		<logger level="INFO" message="[Registration Callback : #[payload]]"
-			doc:name="Logger" />
 		<parse-template location="MemberRegisterRedirect.tmp"
 			mimeType="text/html" doc:name="Parse Template" />
 		<set-property propertyName="content-type" value="text/html"
 			doc:name="Property" />
+		<logger level="INFO" message="[Registration Callback Response: #[payload]]"
+			doc:name="Logger" />
 	</flow>
 </mule>
