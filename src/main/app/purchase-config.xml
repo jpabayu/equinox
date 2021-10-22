@@ -297,7 +297,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 									         <description>' + flowVars['description'] + '</description>
 									         <fromMember>' + flowVars['msisdn'] + '</fromMember>
 									         <toMember>' + flowVars['parentUsername'] + '</toMember>
-									         <traceNumber>' + flowVars['traceNumber'] + '</traceNumber>
+									         <traceNumber>' + flowVars['parentID'] + '' + flowVars['traceNumber'] + '</traceNumber>
 									         <transferTypeID>' + flowVars['transferTypeID'] + '</transferTypeID>
 									      </ser:doPayment>
 									   </soapenv:Body>

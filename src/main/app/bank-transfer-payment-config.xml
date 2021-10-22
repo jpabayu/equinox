@@ -44,9 +44,9 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				         <bankID>' + originalPayload['bankID'] + '</bankID>
 				         <description>' + flowVars['description'] + '</description>
 				         <otp>' + flowVars['otp'] + '</otp>
-					 <credential>' + flowVars['credential'] + '</credential>
+					 	 <credential>' + flowVars['credential'] + '</credential>
 				         <accessTypeID>' + flowVars['accessTypeID'] + '</accessTypeID>
-				         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+				         <traceNumber>' + originalPayload['parentID'] + originalPayload['traceNumber'] + '</traceNumber>
 				         <username>' + originalPayload['fromMember'] + '</username>
 				      </ser:bankAccountTransferPayment>
 				   </soapenv:Body>

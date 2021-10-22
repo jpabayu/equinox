@@ -28,7 +28,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				         ' + flowVars['defaultDescription'] + '
 				         <fromMember>' + originalPayload['fromMember'] + '</fromMember>
 				         <toMember>' + originalPayload['toMember'] + '</toMember>
-				         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+				         <traceNumber>' + originalPayload['parentID'] + '' + originalPayload['traceNumber'] + '</traceNumber>
 				         <originator>' + originalPayload['parentUsername'] + '</originator>
 				         <referenceNumber>' + flowVars['defaultReferenceNumber'] + '</referenceNumber>
 				         <transferTypeID>' + flowVars['defaultTransferTypeID'] + '</transferTypeID>

@@ -28,7 +28,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				         <description>' + flowVars['defaultDescription'] + '</description>
 				         <fromMember>' + originalPayload['parentUsername'] + '</fromMember>
 				         <toMember>' + originalPayload['toMember'] + '</toMember>
-				         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+				         <traceNumber>' + originalPayload['parentID'] + '' + originalPayload['traceNumber'] + '</traceNumber>
 				         <transferTypeID>' + flowVars['defaultTransferTypeID'] + '</transferTypeID>
 				      </ser:doPayment>
 				   </soapenv:Body>

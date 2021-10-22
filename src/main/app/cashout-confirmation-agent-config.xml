@@ -40,7 +40,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			         <fromMember>' + originalPayload['fromMember'] + '</fromMember>
 			         <otp>' + originalPayload['otp'] + '</otp>
 			         <toMember>' + originalPayload['parentUsername'] + '</toMember>
-			         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+			         <traceNumber>' + originalPayload['parentID'] + '' + originalPayload['traceNumber'] + '</traceNumber>
 			      </ser:confirmAgentCashout>
 			   </soapenv:Body>
 			</soapenv:Envelope>';

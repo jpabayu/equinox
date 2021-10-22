@@ -54,7 +54,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				         <originator>' + originalPayload['parentUsername'] + '</originator>
 				         <terminalID>' + flowVars.terminalID + '</terminalID>
 				         <toMember>' + flowVars.merchantID + '</toMember>
-				         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+				         <traceNumber>' + originalPayload['parentID'] + '' + originalPayload['traceNumber'] + '</traceNumber>
 				         <ticketID>' + flowVars.ticketID + '</ticketID>
 				      </ser:posPayment>
 				   </soapenv:Body>

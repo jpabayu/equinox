@@ -47,7 +47,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					         <fromMember>' + originalPayload['fromMember'] + '</fromMember>
 					         <paymentCode>' + originalPayload['paymentCode'] + '</paymentCode>
 					         <referenceNumber>' + originalPayload['referenceNumber'] + '</referenceNumber>
-					         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+					         <traceNumber>' + originalPayload['parentID'] + '' + originalPayload['traceNumber'] + '</traceNumber>
 					         <transferTypeID>' + flowVars['trfTypeID'] + '</transferTypeID>
 					      </ser:paymentVA>
 					   </soapenv:Body>

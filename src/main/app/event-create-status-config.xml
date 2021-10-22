@@ -35,7 +35,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 				         <name>' + originalPayload['name'] + '</name>
 				         <referenceNumber>' + originalPayload['referenceNumber'] + '</referenceNumber>
 				         <status>' + flowVars['status'] + '</status>
-				         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+				         <traceNumber>' + originalPayload['parentID'] + '' + originalPayload['traceNumber'] + '</traceNumber>
 				         <transactionNumber>' + originalPayload['transactionNumber'] + '</transactionNumber>
 				         <username>' + originalPayload['parentUsername'] + '</username>
 				      </ser:createEventStatus>

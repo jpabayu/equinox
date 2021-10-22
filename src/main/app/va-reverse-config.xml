@@ -33,7 +33,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					   </soapenv:Header>
 					   <soapenv:Body>
 					      <ser:reversePayment>
-					         <traceNumber>' + originalPayload['traceNumber'] + '</traceNumber>
+					         <traceNumber>' + originalPayload['parentID'] + '' + originalPayload['traceNumber'] + '</traceNumber>
 					         <username>' + originalPayload['parentUsername'] + '</username>
 					      </ser:reversePayment>
 					   </soapenv:Body>
