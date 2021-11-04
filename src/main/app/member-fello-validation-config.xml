@@ -199,4 +199,115 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 		<logger level="INFO" message="[Registration Callback Response: #[payload]]"
 			doc:name="Logger" />
 	</flow>
+
+	<flow name="memberUnBindValidationFlow">
+		<choice doc:name="Choice">
+			<when>
+				<and-filter doc:name="And">
+					<expression-filter expression="#[originalPayload['msisdn'] != null]" />
+					<expression-filter expression="#[originalPayload['token'] != null]" />
+				</and-filter>
+
+				<set-variable value="^[\p{L}\s.’\-,]+$" variableName="nameRegex" />
+
+				<logger level="INFO"
+					message="[ Validate MSISDN: #[org.mule.util.StringUtils.isNumeric(originalPayload['msisdn'])] ]" />
+
+				<choice doc:name="Choice">
+					<when
+						expression="#[org.mule.util.StringUtils.isNumeric(originalPayload['msisdn']) == true]">
+						<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+						<choice doc:name="Choice">
+							<when expression="#[payload == 'ALLOWED']">
+								<choice doc:name="Choice">
+									<when expression="#[originalPayload['validateHash'] == true]">
+										<choice doc:name="Choice">
+											<when
+												expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload.'requestAuth')]">
+												<flow-ref name="hashValidation" doc:name="Flow Reference" />
+												<choice doc:name="Choice">
+													<when expression="#[payload == 'ALLOWED']">
+														<set-payload value="#[originalPayload]"
+															doc:name="Set Payload" />
+														<flow-ref name="memberUnbindBPConfigFlow"
+															doc:name="Flow Reference" />
+													</when>
+													<otherwise>
+														<set-payload value="#[originalPayload]"
+															doc:name="Set Payload" />
+														<expression-component doc:name="Expression">
+															<![CDATA[
+															responseMap = new java.util.HashMap();
+															responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('INVALID_SIGNATURE');			
+															payload = responseMap;]]>
+														</expression-component>
+														<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+													</otherwise>
+												</choice>
+											</when>
+											<otherwise>
+												<set-payload value="#[originalPayload]"
+													doc:name="Set Payload" />
+												<logger level="INFO"
+													message="[{#[correlationID]} : MEMBER-UNBIND-VALIDATION Request = Request Auth Is NULL ]"
+													doc:name="Logger" />
+												<expression-component doc:name="Expression">
+													<![CDATA[
+													responseMap = new java.util.HashMap();
+													responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('INVALID_PARAMETER');			
+													payload = responseMap;]]>
+												</expression-component>
+												<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+											</otherwise>
+										</choice>
+									</when>
+									<otherwise>
+										<logger level="DEBUG" message="[SKIP HASH Validation]"
+											doc:name="Logger" />
+										<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+										<flow-ref name="memberUnbindBPConfigFlow" doc:name="Flow Reference" />
+									</otherwise>
+								</choice>
+							</when>
+							<otherwise>
+								<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+								<expression-component doc:name="Expression">
+									<![CDATA[
+									responseMap = new java.util.HashMap();
+									responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('SESSION_EXPIRED');			
+									payload = responseMap;]]>
+								</expression-component>
+								<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+							</otherwise>
+						</choice>
+					</when>
+					<otherwise>
+						<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+						<logger level="INFO"
+							message="[{#[correlationID]} : MEMBER-UNBIND-VALIDATION Request =  Is Numeric]"
+							doc:name="Logger" />
+						<expression-component doc:name="Expression">
+							<![CDATA[
+							responseMap = new java.util.HashMap();
+							responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('INVALID_PARAMETER');			
+							payload = responseMap;]]>
+						</expression-component>
+						<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="INFO"
+					message="[{#[correlationID]} : MEMBER-UNBIND-VALIDATION Request = Invalid Parameter]"
+					doc:name="Logger" />
+				<expression-component doc:name="Expression">
+					<![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('INVALID_PARAMETER');			
+					payload = responseMap;]]>
+				</expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference" />
+			</otherwise>
+		</choice>
+	</flow>
 </mule>

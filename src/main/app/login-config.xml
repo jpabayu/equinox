@@ -46,10 +46,11 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 				<pooled-component>
 					<spring-object bean="JWTProcessor" />
 				</pooled-component>
+				<set-variable value="#[payload]" variableName="tokenJWT" />
 				<expression-component doc:name="Expression">
 					<![CDATA[
 					responseMap = new java.util.HashMap();
-					responseMap['token']=payload;
+					responseMap['token'] = flowVars['tokenJWT'];
 					
 					responseList = new java.util.LinkedList();
 					responseList = [responseMap];

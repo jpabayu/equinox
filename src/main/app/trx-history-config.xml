@@ -14,27 +14,79 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 	<flow name="trxHistoryConfigFlow">
 		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
 			doc:name="Variable" />
-		<expression-component doc:name="Expression">
-		<![CDATA[
-			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
-			   <soapenv:Header>
-			      <ser:headerAuth>
-			         <token>' + flowVars['tokennc'] + '</token>
-			      </ser:headerAuth>
-			   </soapenv:Header>
-			   <soapenv:Body>
-			      <ser:loadTransactionHistory>
-			         <accountID>' + originalPayload['accountID'] + '</accountID>
-			         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
-			         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
-			         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
-			         <toDate>' + originalPayload['toDate'] + '</toDate>
-			         <username>' + originalPayload['fromMember'] + '</username>
-			      </ser:loadTransactionHistory>
-			   </soapenv:Body>
-			</soapenv:Envelope>';
-			payload = msg;]]>
-		</expression-component>
+		<choice>
+			<when expression="#[originalPayload['transferTypeID'] != null]">
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+						   <soapenv:Header>
+						      <ser:headerAuth>
+						         <token>' + flowVars['tokennc'] + '</token>
+						      </ser:headerAuth>
+						   </soapenv:Header>
+						   <soapenv:Body>
+						      <ser:loadTransactionHistory>
+						         <accountID>' + originalPayload['accountID'] + '</accountID>
+						         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
+						         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
+						         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
+						         <toDate>' + originalPayload['toDate'] + '</toDate>
+						         <transferTypeID>' + originalPayload['transferTypeID'] + '</transferTypeID>
+						         <username>' + originalPayload['fromMember'] + '</username>
+						      </ser:loadTransactionHistory>
+						   </soapenv:Body>
+						</soapenv:Envelope>';
+					payload = msg;]]>
+				</expression-component>
+			</when>
+			<when expression="#[originalPayload['transactionStatus'] != null]">
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+						   <soapenv:Header>
+						      <ser:headerAuth>
+						         <token>' + flowVars['tokennc'] + '</token>
+						      </ser:headerAuth>
+						   </soapenv:Header>
+						   <soapenv:Body>
+						      <ser:loadTransactionHistory>
+						         <accountID>' + originalPayload['accountID'] + '</accountID>
+						         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
+						         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
+						         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
+						         <toDate>' + originalPayload['toDate'] + '</toDate>
+						         <transactionStatus>' + originalPayload['transactionStatus'] + '</transactionStatus>
+						         <username>' + originalPayload['fromMember'] + '</username>
+						      </ser:loadTransactionHistory>
+						   </soapenv:Body>
+						</soapenv:Envelope>';
+					payload = msg;]]>
+				</expression-component>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression">
+					<![CDATA[
+						msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+						   <soapenv:Header>
+						      <ser:headerAuth>
+						         <token>' + flowVars['tokennc'] + '</token>
+						      </ser:headerAuth>
+						   </soapenv:Header>
+						   <soapenv:Body>
+						      <ser:loadTransactionHistory>
+						         <accountID>' + originalPayload['accountID'] + '</accountID>
+						         <currentPage>' + originalPayload['currentPage'] + '</currentPage>
+						         <pageSize>' + originalPayload['pageSize'] + '</pageSize>
+						         <fromDate>' + originalPayload['fromDate'] + '</fromDate>
+						         <toDate>' + originalPayload['toDate'] + '</toDate>
+						         <username>' + originalPayload['fromMember'] + '</username>
+						      </ser:loadTransactionHistory>
+						   </soapenv:Body>
+						</soapenv:Envelope>';
+					payload = msg;]]>
+				</expression-component>
+			</otherwise>
+		</choice>
 		<http:request config-ref="HTTP_Request_Configuration"
 			path="accounts" method="POST" doc:name="HTTP">
 			<http:request-builder>
@@ -104,7 +156,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			<set-variable variableName="toUsername"
 				value="#[xpath3('//transfers' + [counter] + '/toMember/username')]"
 				doc:name="Variable" />
-			
+
 			<set-variable variableName="reverseByID"
 				value="#[xpath3('//transfers' + [counter] + '/reverseBy/id')]"
 				doc:name="Variable" />
