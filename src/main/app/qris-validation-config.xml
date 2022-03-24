@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<flow name="qrisInqValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+				<expression-filter expression="#[originalPayload['qrData'] != null]" />
+			</and-filter>
+		</message-filter>
+		<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<flow-ref name="accessValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<choice doc:name="Choice">
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice doc:name="Choice">
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload.'requestAuth')]">
+						<flow-ref name="hashValidation" doc:name="Flow Reference" />
+						<message-filter onUnaccepted="requestValidationFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+						<flow-ref name="qrisInqConfigFlow" doc:name="Flow Reference" />
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" doc:name="Flow Reference" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="DEBUG" message="[SKIP HASH Validation]"
+					doc:name="Logger" />
+				<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+				<flow-ref name="qrisInqConfigFlow" doc:name="Flow Reference" />
+			</otherwise>
+		</choice>
+	</flow>
+
+	<flow name="qrisCreditValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+				<expression-filter expression="#[originalPayload['transactionKey'] != null]" />
+				<expression-filter expression="#[originalPayload['amount'] != null]" />
+				<expression-filter expression="#[originalPayload['credential'] != null]" />
+			</and-filter>
+		</message-filter>
+		<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<flow-ref name="accessValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<choice doc:name="Choice">
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice doc:name="Choice">
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload.'requestAuth')]">
+						<flow-ref name="hashValidation" doc:name="Flow Reference" />
+						<message-filter onUnaccepted="requestValidationFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+						<flow-ref name="qrisCreditConfigFlow" doc:name="Flow Reference" />
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" doc:name="Flow Reference" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="DEBUG" message="[SKIP HASH Validation]"
+					doc:name="Logger" />
+				<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+				<flow-ref name="qrisCreditConfigFlow" doc:name="Flow Reference" />
+			</otherwise>
+		</choice>
+	</flow>
+
+	<flow name="qrisCheckStatusValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+				<expression-filter expression="#[originalPayload['transactionKey'] != null]" />
+			</and-filter>
+		</message-filter>
+		<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<flow-ref name="accessValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="requestValidationFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<choice doc:name="Choice">
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice doc:name="Choice">
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload.'requestAuth')]">
+						<flow-ref name="hashValidation" doc:name="Flow Reference" />
+						<message-filter onUnaccepted="requestValidationFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+						<flow-ref name="qrisStatusConfigFlow" doc:name="Flow Reference" />
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" doc:name="Flow Reference" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="DEBUG" message="[SKIP HASH Validation]"
+					doc:name="Logger" />
+				<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+				<flow-ref name="qrisStatusConfigFlow" doc:name="Flow Reference" />
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

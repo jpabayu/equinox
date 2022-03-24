@@ -15,21 +15,22 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
 			doc:name="Variable" />
 		<expression-component doc:name="Expression">
-		<![CDATA[
-			msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
-				   <soapenv:Header>
-				      <ser:headerAuth>
-				         <token>' + flowVars['tokennc'] + '</token>
-				      </ser:headerAuth>
-				   </soapenv:Header>
-				   <soapenv:Body>
-				      <ser:confirmPayment>
-				         <otp>' + originalPayload['otp'] + '</otp>
-				         <requestID>' + originalPayload['requestID'] + '</requestID>
-				      </ser:confirmPayment>
-				   </soapenv:Body>
-				</soapenv:Envelope>';
-			payload = msg;]]>
+			<![CDATA[
+				msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+						<soapenv:Header>
+					      <ser:headerAuth>
+					         <token>' + flowVars['tokennc'] + '</token>
+					      </ser:headerAuth>
+						</soapenv:Header>
+						<soapenv:Body>
+							<ser:confirmPayment>
+						    	   <amount>' + originalPayload['amount'] + '</amount>
+						       <otp>' + originalPayload['otp'] + '</otp>
+							   <requestID>' + originalPayload['requestID'] + '</requestID>
+							</ser:confirmPayment>
+						</soapenv:Body>
+					</soapenv:Envelope>';
+				payload = msg;]]>
 		</expression-component>
 		<set-payload
 			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]" />

@@ -1,6 +1,5 @@
 package org.equinox.api.data;
 
-
 public abstract class StatusBuilder {
 
 	public static ResponseStatus getStatus(String arg) {
@@ -115,9 +114,34 @@ public abstract class StatusBuilder {
 		case EMAIL_NOT_VERIFY:
 			return new ResponseStatus("E01", "EMAIL_NOT_VERIFY", "Please verify your email");
 		case KYC_REJECTED:
-			return new ResponseStatus("K01", "KYC_REJECTED", "Upgrade account has been rejected, please verify your data.");
+			return new ResponseStatus("K01", "KYC_REJECTED",
+					"Upgrade account has been rejected, please verify your data.");
 		case KYC_PENDING:
 			return new ResponseStatus("K02", "KYC_PENDING", "Upgrade account in process.");
+		case MESSAGE_FORMAT_ERROR:
+			return new ResponseStatus("C18", "MESSAGE_FORMAT_ERROR", "There is an format error on the message");
+		case INVALID_QR_CRC:
+			return new ResponseStatus("Q02", "INVALID_QR_CRC", "The data data inside QR has invalid CRC");
+		case UNSUPPORTED_CURRENCY:
+			return new ResponseStatus("U02", "UNSUPPORTED_CURRENCY",
+					"Currency is not supported by our system at the moment");
+		case INVALID_MERCHANT:
+			return new ResponseStatus("C15", "INVALID_MERCHANT", "Invalid merchant/merchant not found");
+		case INVALID_TRANSACTION:
+			return new ResponseStatus("C16", "INVALID_TRANSACTION",
+					"Invalid transaction, please try again from begining");
+		case MONTHLY_CREDIT_LIMIT_REACHED:
+			return new ResponseStatus("S42", "MONTHLY_CREDIT_LIMIT_REACHED", "Your monthly account limit has reached");
+		case PENDING:
+			return new ResponseStatus("A03", "PENDING", "Request Pending");
+		case ISO_UNABLE_ROUTE_TRANSACTION:
+			return new ResponseStatus("I73", "ISO_UNABLE_ROUTE_TRANSACTION", "Unable to route transaction");
+		case ISO_CUT_OFF_IN_PROGRESS:
+			return new ResponseStatus("I90", "ISO_CUT_OFF_IN_PROGRESS", "Cut-off is in progress");
+		case ISO_SERVER_IS_DOWN:
+			return new ResponseStatus("I13", "ISO_SERVER_IS_DOWN", "Application server is down");
+		case ISO_SYSTEM_MALFUNCTION:
+			return new ResponseStatus("I96", "ISO_SYSTEM_MALFUNCTION", "System malfunction");
 		default:
 			return new ResponseStatus("E99", "UNKNOWN_ERROR", "Unknown Error");
 		}

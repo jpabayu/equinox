@@ -5,9 +5,6 @@ import org.apache.commons.lang.StringUtils;
 
 public class QRData implements Serializable, Comparable<QRData> {
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -7043158572206171728L;
 	private String id;
 	private int length;

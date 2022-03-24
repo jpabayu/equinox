@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<flow name="qrisStatusConfigFlow">
+		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
+			doc:name="Variable" />
+		<set-variable variableName="switchingUsername" value="${jalin.username}"
+			doc:name="Variable" />
+		<set-variable variableName="switchingTransferTypeId"
+			value="${qris.off.us.transfer.type.id}" doc:name="Variable" />
+		<set-variable variableName="qrisGWGenerator" value=""
+			doc:name="Variable" />
+		<set-variable variableName="transactionKey" value=""
+			doc:name="Variable" />
+		<set-variable variableName="responseMap" value="#[new java.util.HashMap()]"
+			doc:name="Variable" />
+		<expression-component doc:name="Expression">
+		<![CDATA[
+			flowVars.qrisGWGenerator = new org.equinox.api.qris.process.QrisGWInquiry(
+						flowVars.originalPayload.getQrData());
+						
+			sb = new java.lang.StringBuilder();
+			sb.append(flowVars.username);
+			sb.append(flowVars.qrisGWGenerator.getStan());
+			sb.append(flowVars.correlationID);
+			flowVars.transactionKey = flowVars.qrisGWGenerator.generateRrn(sb, sb.toString());]]>
+		</expression-component>
+		<set-variable variableName="transactionCurrency"
+			value="#[flowVars.qrisGWGenerator.getTransactionCurrency()]"
+			doc:name="Variable" />
+		<choice doc:name="Choice">
+			<when expression="#[flowVars.qrisGWGenerator.isValidQR() != true]">
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('MESSAGE_FORMAT_ERROR');
+					payload = flowVars.responseMap;]]>
+				</expression-component>
+			</when>
+			<when expression="#[flowVars.qrisGWGenerator.isValidCRC() != true]">
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('INVALID_QR_CRC');
+					payload = flowVars.responseMap;]]>
+				</expression-component>
+			</when>
+			<when expression="#[flowVars.transactionCurrency.isSupported() != true]">
+				<expression-component doc:name="Expression"><![CDATA[
+					params = new java.lang.String[]{flowVars.transactionCurrency.getCode()};
+					
+					flowVars.responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('UNSUPPORTED_CURRENCY', params);
+					payload = flowVars.responseMap;]]>
+				</expression-component>
+			</when>
+			<when expression="#[flowVars.qrisGWGenerator.isMerchantExists() != true]">
+				<expression-component doc:name="Expression"><![CDATA[
+					payload = flowVars.qrisGWGenerator.generateRequest();]]>
+				</expression-component>
+				<logger
+					message="[#[flowVars.correlationID + ' ' + flowVars.action] (QRIS GW INQUIRY MPAN REQUEST) : #[message.payloadAs(java.lang.String)]]"
+					level="INFO" doc:name="Logger" />
+				<http:request config-ref="HTTP_QRIS_Request_Configuration"
+					path="payment/inquiryMPAN" method="POST" doc:name="HTTP">
+					<http:request-builder>
+						<http:header headerName="Content-Type"
+							value="application/x-www-form-urlencoded" />
+					</http:request-builder>
+				</http:request>
+				<logger
+					message="[#[flowVars.correlationID + ' ' + flowVars.action] (QRIS GW INQUIRY MPAN RESPONSE) : #[message.payloadAs(java.lang.String)]]"
+					level="INFO" doc:name="Logger" />
+				<json:json-to-object-transformer
+					returnClass="java.util.HashMap" doc:name="JSON to Object" />
+				<set-variable variableName="qrisGwResponse" value="#[payload]"
+					doc:name="Variable" />
+				<set-payload
+					value="#[org.equinox.api.qris.QrisGWStatusMapper.getCanopusStatus(payload['39'])]"
+					doc:name="Set Payload" />
+				<choice>
+					<when expression="#[payload == 'PROCESSED']">
+						<expression-component doc:name="Expression"><![CDATA[
+							flowVars.qrisGWGenerator.initMerchant(flowVars.qrisGwResponse['57']);
+							flowVars.responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+							
+							qrisInquiryResponse = new org.equinox.api.qris.data.QrisInquiryResponse();
+							qrisInquiryResponse.setTransactionKey(flowVars.transactionKey);
+							qrisInquiryResponse.setAcquirerDomain(flowVars.qrisGWGenerator.getAcquirerDomain());
+							qrisInquiryResponse.setMerchantPAN(flowVars.qrisGWGenerator.getMerchantPAN());
+							qrisInquiryResponse.setMerchantID(flowVars.qrisGWGenerator.getMerchantID());
+							qrisInquiryResponse.setMerchantName(flowVars.qrisGWGenerator.getMerchantName());
+							qrisInquiryResponse.setMerchantCity(flowVars.qrisGWGenerator.getMerchantCity());
+							qrisInquiryResponse.setMerchantCriteria(flowVars.qrisGWGenerator.getMerchantCriteria());  
+							qrisInquiryResponse.setMerchantType(flowVars.qrisGWGenerator.getMerchantType()); 
+							qrisInquiryResponse.setCountryCode(flowVars.qrisGWGenerator.getCountryCode()); 
+							qrisInquiryResponse.setPostalCode(flowVars.qrisGWGenerator.getPostalCode()); 
+							qrisInquiryResponse.setAdditionalData(flowVars.qrisGWGenerator.getAdditionalData()); 
+							qrisInquiryResponse.setAcceptorTID(flowVars.qrisGWGenerator.getAcceptorTID());
+							qrisInquiryResponse.setTransactionCurrency(flowVars.qrisGWGenerator.getTransactionCurrency());
+							qrisInquiryResponse.setPercentageTip(flowVars.qrisGWGenerator.isPercentageTip());
+							qrisInquiryResponse.setAmount(flowVars.qrisGWGenerator.getAmount());
+							qrisInquiryResponse.setConvenienceFee(flowVars.qrisGWGenerator.getConvenienceFee());
+									
+							flowVars.responseMap['qrisInquiryResponse'] = qrisInquiryResponse;
+							
+							hazelcastMap = new java.util.HashMap();
+							hazelcastMap['methodType'] = 'PUT';
+							hazelcastMap['name'] = 'qrisInquiryMap';
+							hazelcastMap['key'] = flowVars.transactionKey;
+							hazelcastMap['value'] = flowVars.qrisGWGenerator;
+							hazelcastMap['ttl'] = ${qris.cache.ttl.inquiry};
+						payload = hazelcastMap;]]>
+						</expression-component>
+						<pooled-component>
+							<spring-object bean="CacheProcessor" />
+						</pooled-component>
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression">
+							<![CDATA[
+								responseMap = new java.util.HashMap();
+								responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(payload);			
+							payload = responseMap;]]>
+						</expression-component>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression"><![CDATA[
+					qrisInquiryResponse = new org.equinox.api.qris.data.QrisInquiryResponse();
+					qrisInquiryResponse.setTransactionKey(flowVars.transactionKey);
+					qrisInquiryResponse.setAcquirerDomain(flowVars.qrisGWGenerator.getAcquirerDomain());
+					qrisInquiryResponse.setMerchantPAN(flowVars.qrisGWGenerator.getMerchantPAN());
+					qrisInquiryResponse.setMerchantID(flowVars.qrisGWGenerator.getMerchantID());
+					qrisInquiryResponse.setMerchantName(flowVars.qrisGWGenerator.getMerchantName());
+					qrisInquiryResponse.setMerchantCity(flowVars.qrisGWGenerator.getMerchantCity());
+					qrisInquiryResponse.setMerchantCriteria(flowVars.qrisGWGenerator.getMerchantCriteria());  
+					qrisInquiryResponse.setMerchantType(flowVars.qrisGWGenerator.getMerchantType()); 
+					qrisInquiryResponse.setCountryCode(flowVars.qrisGWGenerator.getCountryCode()); 
+					qrisInquiryResponse.setPostalCode(flowVars.qrisGWGenerator.getPostalCode()); 
+					qrisInquiryResponse.setAdditionalData(flowVars.qrisGWGenerator.getAdditionalData()); 
+					qrisInquiryResponse.setAcceptorTID(flowVars.qrisGWGenerator.getAcceptorTID());
+					qrisInquiryResponse.setTransactionCurrency(flowVars.qrisGWGenerator.getTransactionCurrency());
+					qrisInquiryResponse.setPercentageTip(flowVars.qrisGWGenerator.isPercentageTip());
+					qrisInquiryResponse.setAmount(flowVars.qrisGWGenerator.getAmount());
+					qrisInquiryResponse.setConvenienceFee(flowVars.qrisGWGenerator.getConvenienceFee());
+							
+					flowVars.responseMap['qrisInquiryResponse'] = qrisInquiryResponse;]]>
+				</expression-component>
+				<choice doc:name="Choice">
+					<when expression="#[flowVars.qrisGWGenerator.isMerchantOnUs() == true]">
+						<set-variable value="#[flowVars.qrisGWGenerator.getMerchantPAN();]"
+							variableName="nnsID" />
+						<set-variable
+							value="#[org.apache.commons.lang.StringUtils.substring(flowVars.nnsID, 0, nnsID.length()-1)]"
+							variableName="nnsId" />
+						<expression-component doc:name="Expression">
+							<![CDATA[
+								msg='<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.bellatrix.org/">
+									   <soapenv:Header>
+									      <ser:headerAuth>
+									         <token>' + flowVars['tokennc'] + '</token>
+									      </ser:headerAuth>
+									   </soapenv:Header>
+									   <soapenv:Body>
+									      <ser:loadTerminalByID>
+									         <nnsID>' + flowVars['nnsId'] + '</nnsID>
+									      </ser:loadTerminalByID>
+									   </soapenv:Body>
+									</soapenv:Envelope>';
+								payload = msg;]]>
+						</expression-component>
+						<http:request config-ref="HTTP_Request_Configuration"
+							path="pos" method="POST" doc:name="HTTP">
+							<http:request-builder>
+								<http:header headerName="soapaction"
+									value="&quot;loadTerminalByID&quot;" />
+							</http:request-builder>
+						</http:request>
+						<byte-array-to-string-transformer
+							doc:name="Byte Array to String" />
+						<set-variable variableName="status"
+							value="#[xpath3('//status/message')]" doc:name="Variable" />
+
+						<choice>
+							<when expression="#[flowVars['status'] == 'PROCESSED']">
+								<set-variable value="#[xpath3('//terminal/transferTypeID')]"
+									variableName="trfTypeID" />
+								<expression-component doc:name="Expression">
+								<![CDATA[
+									flowVars.qrisGWGenerator.setTransferTypeId(flowVars.trfTypeID);
+									flowVars.responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+										
+									hazelcastMap = new java.util.HashMap();
+									hazelcastMap['methodType'] = 'PUT';
+									hazelcastMap['name'] = 'qrisInquiryMap';
+									hazelcastMap['key'] = flowVars.transactionKey;
+									hazelcastMap['value'] = flowVars.qrisGWGenerator;
+									hazelcastMap['ttl'] = ${qris.cache.ttl.inquiry};
+									payload = hazelcastMap;]]>
+								</expression-component>
+								<pooled-component>
+									<spring-object bean="CacheProcessor" />
+								</pooled-component>
+							</when>
+							<otherwise>
+								<expression-component doc:name="Expression">
+									<![CDATA[
+									responseMap = new java.util.HashMap();
+									responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus(flowVars['status']);	
+									payload = responseMap;]]>
+								</expression-component>
+							</otherwise>
+						</choice>
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression">
+						<![CDATA[
+							flowVars.responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+								
+							hazelcastMap = new java.util.HashMap();
+							hazelcastMap['methodType'] = 'PUT';
+							hazelcastMap['name'] = 'qrisInquiryMap';
+							hazelcastMap['key'] = flowVars.transactionKey;
+							hazelcastMap['value'] = flowVars.qrisGWGenerator;
+							hazelcastMap['ttl'] = ${qris.cache.ttl.inquiry};
+							payload = hazelcastMap;]]>
+						</expression-component>
+						<pooled-component>
+							<spring-object bean="CacheProcessor" />
+						</pooled-component>
+					</otherwise>
+				</choice>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

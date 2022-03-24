@@ -142,6 +142,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			<and-filter doc:name="And">
 				<expression-filter expression="#[originalPayload['token'] != null]" />
 				<expression-filter expression="#[originalPayload['requestID'] != null]" />
+				<expression-filter expression="#[originalPayload['amount'] != null]" />
 			</and-filter>
 		</message-filter>
 
@@ -725,7 +726,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			doc:name="Message">
 			<expression-filter expression="#[payload == 'ALLOWED']" />
 		</message-filter>
-		<logger level="INFO" message="PAYLOAD= #[payload]" />
+		<logger level="INFO" message="PAYLOAD= #[payload]" doc:name="Logger"/>
 
 		<set-variable
 			value="#[defaultFromMember = (originalPayload['fromMember'] == null) ? originalPayload['parentUsername'] : originalPayload['fromMember']]"

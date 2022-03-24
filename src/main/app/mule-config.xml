@@ -31,7 +31,7 @@ http://www.springframework.org/schema/context http://www.springframework.org/sch
 			class="org.mule.util.store.SimpleMemoryObjectStore" />
 	</spring:beans>
 
-	<configuration>
+	<configuration doc:name="Configuration">
 		<default-threading-profile maxThreadsActive="50" />
 	</configuration>
 
@@ -50,10 +50,14 @@ http://www.springframework.org/schema/context http://www.springframework.org/sch
 		host="${api.core.ws.host}" port="8081" basePath="bellatrix/host/services/ws"
 		doc:name="HTTP Request Configuration" />
 
-
 	<http:request-config name="HTTP_TYK_Request_Configuration"
 		host="${api.tyk.host}" port="${api.tyk.port}" basePath="tyk"
 		doc:name="HTTP TYK Request Configuration" />
+
+	<http:request-config name="HTTP_QRIS_Request_Configuration"
+		host="${qris.gw.ip}" port="${qris.gw.port}" basePath="qris"
+		responseTimeout="35000" doc:name="HTTP Request Configuration" />
+
 
 	<vm:connector name="Notification_VM" validateConnections="true"
 		doc:name="VM" />
