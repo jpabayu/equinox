@@ -31,7 +31,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			payload = regMap;]]>
 		</expression-component>
 		<pooled-component>
-			<spring-object bean="CacheProcessor" />
+			<spring-object bean="HazelcastStore" />
 		</pooled-component>
 		<choice>
 			<when
@@ -81,7 +81,7 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 			payload = regMap;]]>
 		</expression-component>
 		<pooled-component>
-			<spring-object bean="CacheProcessor" />
+			<spring-object bean="HazelcastStore" />
 		</pooled-component>
 		<choice>
 			<when expression="#[payload != null]">

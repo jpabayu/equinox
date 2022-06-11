@@ -34,14 +34,21 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 		</expression-component>
 		<set-payload
 			value="#[org.apache.commons.codec.binary.StringUtils.newStringUtf8(payload.getBytes())]" />
+		<logger
+			message="[#[flowVars.correlationID] (BLTRX CONFIRM PAYMENT REQUEST) : #[payload]]"
+			level="INFO" doc:name="Logger" />	
 		<http:request config-ref="HTTP_Request_Configuration"
 			path="payments" method="POST" doc:name="HTTP">
 			<http:request-builder>
 				<http:header headerName="soapaction" value="&quot;confirmPayment&quot;" />
 			</http:request-builder>
+			<http:success-status-code-validator values="200,500"/>
 		</http:request>
 		<byte-array-to-string-transformer
 			doc:name="Byte Array to String" />
+		<logger
+			message="[#[flowVars.correlationID] (BLTRX CONFIRM PAYMENT RESPONSE) : #[payload]]"
+			level="INFO" doc:name="Logger" />	
 		<set-variable value="#[xpath3('//status/message')]"
 			variableName="status" doc:name="Variable" />
 		<set-variable value="#[xpath3('//traceNumber')]"

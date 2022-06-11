@@ -25,8 +25,25 @@ http://www.springframework.org/schema/context http://www.springframework.org/sch
 	<context:property-placeholder location="${mule.env}.properties" />
 
 	<spring:beans>
-		<spring:import resource="classpath:app-context.xml" />
 		<spring:import resource="classpath:hazelcast-context.xml" />
+		<spring:bean id="JWTProcessor" class="org.equinox.api.auth.JWTProcessor">
+			<spring:property name="issuer" value="${api.jwt.issuer.value}" />
+			<spring:property name="subject" value="${api.jwt.subject.value}" />
+		</spring:bean>
+	
+		<spring:bean id="JWTDecoder" class="org.equinox.api.auth.JWTDecoder" />
+		<spring:bean id="JWTValidation" class="org.equinox.api.auth.JWTValidation">
+			<spring:property name="issuer" value="${api.jwt.issuer.value}" />
+		</spring:bean>
+	
+		<spring:bean id="HashValidation" class="org.equinox.api.auth.HashValidation" />
+		<spring:bean id="HashEncoder" class="org.equinox.api.auth.HashEncoder" />
+		<spring:bean id="Configurator" class="org.equinox.api.process.Configurator" />
+	
+		<spring:bean id="HazelcastStore" class="org.equinox.api.cache.HazelcastStore">
+			<spring:property name="instance" ref="Instance" />
+		</spring:bean>
+		<spring:bean name="globalComponent" class="org.equinox.api.GlobalComponent" />
 		<spring:bean id="objectStore"
 			class="org.mule.util.store.SimpleMemoryObjectStore" />
 	</spring:beans>
@@ -57,7 +74,6 @@ http://www.springframework.org/schema/context http://www.springframework.org/sch
 	<http:request-config name="HTTP_QRIS_Request_Configuration"
 		host="${qris.gw.ip}" port="${qris.gw.port}" basePath="qris"
 		responseTimeout="35000" doc:name="HTTP Request Configuration" />
-
 
 	<vm:connector name="Notification_VM" validateConnections="true"
 		doc:name="VM" />

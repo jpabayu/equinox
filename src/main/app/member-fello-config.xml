@@ -30,6 +30,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Variable" />
 		<set-variable variableName="originalPayload" value="#[payload]"
 			doc:name="Variable" />
+		<set-variable variableName="parentUrl" value="${app.base.url}/Member/Register" 
+			doc:name="Variable" />
 		<expression-transformer
 			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
 			doc:name="Expression" />
@@ -59,6 +61,12 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			path="Member/Register/OTP" allowedMethods="POST" doc:name="HTTP" />
 		<custom-transformer class="org.equinox.api.data.MessageTransformer"
 			doc:name="Java" />
+		<set-variable value="#[message.id]" variableName="correlationID"
+			doc:name="Variable" />
+		<set-variable variableName="parentUrl" value="${app.base.url}/Member/Register" 
+			doc:name="Variable" />		
+		<logger level="INFO"
+			message="[{#[correlationID]} : MEMBER-REGISTER OTP Request = #[payload]]" />	
 		<set-variable variableName="token" value="${api.ws.header.token}"
 			doc:name="Variable" />
 		<set-variable variableName="ticketID" value="#[payload['form-ticketid']]"
@@ -74,7 +82,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			payload = regMap;]]>
 		</expression-component>
 		<pooled-component>
-			<spring-object bean="CacheProcessor" />
+			<spring-object bean="HazelcastStore" />
 		</pooled-component>
 		<set-variable value="#[payload['otp']]" variableName="otpCache"
 			doc:name="Variable" />
@@ -98,6 +106,9 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Variable" />
 		<choice>
 			<when expression="#[flowVars['otpCache'] == flowVars['otp']]">
+				<logger level="INFO"
+					message="[{#[correlationID]} : MEMBER-REGISTER OTP Correct]" />
+				
 				<set-variable
 					value="&lt;description&gt;#[flowVars.parentName]&lt;/description&gt;&lt;externalID&gt;#[flowVars.msisdn]&lt;/externalID&gt;&lt;parentID&gt;#[flowVars.parentID]&lt;/parentID&gt;"
 					variableName="ExtID" doc:name="Variable" />
@@ -142,6 +153,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					variableName="faultString" doc:name="Variable" />
 				<choice doc:name="Choice">
 					<when expression="#[org.mule.util.StringUtils.isNotEmpty(faultString)]">
+						<logger level="INFO"
+							message="[{#[correlationID]} : MEMBER-REGISTER OTP Bellatrix Error: #[faultString]]" />
 						<expression-component doc:name="Expression">
 							<![CDATA[
 								regMap = new java.util.HashMap();
@@ -151,7 +164,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 							payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
-							<spring-object bean="CacheProcessor" />
+							<spring-object bean="HazelcastStore" />
 						</pooled-component>
 						<!-- Callback to Merchant -->
 						<expression-component doc:name="Expression">
@@ -170,6 +183,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						<flow-ref name="merchantCallbackFlow" />
 					</when>
 					<otherwise>
+						<logger level="INFO"
+							message="[{#[correlationID]} : MEMBER-REGISTER OTP Bellatrix Success]" />
 						<expression-component doc:name="Expression">
 						<![CDATA[
 							regMap = new java.util.HashMap();
@@ -179,7 +194,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 						payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
-							<spring-object bean="CacheProcessor" />
+							<spring-object bean="HazelcastStore" />
 						</pooled-component>
 						<expression-component doc:name="Expression">
 							<![CDATA[
@@ -204,7 +219,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 								payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
-							<spring-object bean="CacheProcessor" />
+							<spring-object bean="HazelcastStore" />
 						</pooled-component>
 						<parse-template location="MemberRegistrationCredentials.tmp"
 							mimeType="text/html" doc:name="Parse Template" />
@@ -234,6 +249,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Variable" />
 		<set-variable variableName="pin2" value="#[payload['form-pin2']]"
 			doc:name="Variable" />
+		<set-variable variableName="parentUrl" value="${app.base.url}/Member/Register" 
+			doc:name="Variable" />	
 		<expression-component doc:name="Expression">
 			<![CDATA[
 			regMap = new java.util.HashMap();
@@ -243,7 +260,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			payload = regMap;]]>
 		</expression-component>
 		<pooled-component>
-			<spring-object bean="CacheProcessor" />
+			<spring-object bean="HazelcastStore" />
 		</pooled-component>
 		<set-variable value="#[payload['msisdn']]" variableName="msisdn"
 			doc:name="Variable" />
@@ -332,7 +349,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<set-variable
 					value="62#[org.apache.commons.lang.StringUtils.substring(flowVars['msisdn'], 1)]"

@@ -11,18 +11,20 @@
 	<Appenders>
 		<RollingFile name="file"
 			fileName="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}equinox.log"
-			filePattern="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}equinox-%i.log">
+			filePattern="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}equinox_%d{yyyy-MM-dd}.log">
 			<PatternLayout pattern="%d [%t] %-5p %c - %m%n" />
-			<SizeBasedTriggeringPolicy size="10 MB" />
-			<DefaultRolloverStrategy max="10" />
+			<!--<SizeBasedTriggeringPolicy size="10 MB" /> -->
+			<TimeBasedTriggeringPolicy interval="1"/>
+			<DefaultRolloverStrategy max="30" />
 		</RollingFile>
 
 		<RollingFile name="accessFile"
 			fileName="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}access.log"
-			filePattern="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}access-%i.log">
+			filePattern="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}access_%d{yyyy-MM-dd}.log">
 			<PatternLayout pattern="%d [%t] %-5p %c - %m%n" />
-			<SizeBasedTriggeringPolicy size="10 MB" />
-			<DefaultRolloverStrategy max="10" />
+			<!--<SizeBasedTriggeringPolicy size="10 MB" /> -->
+			<TimeBasedTriggeringPolicy interval="1"/>
+			<DefaultRolloverStrategy max="30" />
 		</RollingFile>
 	</Appenders>
 	<Loggers>

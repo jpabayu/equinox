@@ -318,6 +318,12 @@ button.btn:active:focus, button.btn.active:focus { outline: 0; opacity: 0.6; bac
 
 <style>
 
+.header-icon {
+	width: 15%;
+	margin: 22px 0px 0px 22px;
+	text-align: left;
+}
+
 body {
     font-family: 'Roboto', sans-serif;
     font-size: 16px;
@@ -401,7 +407,7 @@ img { max-width: 100%; }
 /***** Top content *****/
 
 .inner-bg {
-    padding: 100px 0 170px 0;
+    padding: 10px 0 170px 0;
 }
 
 .top-content .text {
@@ -492,13 +498,19 @@ img { max-width: 100%; }
 
 @media (max-width: 767px) {
 	
-	.inner-bg { padding: 60px 0 110px 0; }
-
+	.inner-bg { padding: 10px 0 110px 0; }
+	.header-icon {
+		width: 30%;
+	 }
 }
 
 @media (max-width: 415px) {
 	
 	h1, h2 { font-size: 32px; }
+	
+	.header-icon {
+		width: 40%;
+	 }
 
 }
 
@@ -521,7 +533,11 @@ img { max-width: 100%; }
 
         <!-- Top content -->
         <div class="top-content">
-        	
+        	<div class="header-icon">
+				<a href="https://fello.id/">
+					<img src="https://fello.id/assets/img/logo/logo-fello.png" class="logo-fello">
+				</a>
+			</div>
             <div class="inner-bg">
                 <div class="container">
                     <div class="row">
@@ -532,7 +548,7 @@ img { max-width: 100%; }
  			          		<hr />
                             </div>
                             <div class="form-bottom">
-			                    <form role="form" action="OTP" method="post" class="login-form">
+			                    <form role="form" action="#[flowVars.parentUrl]/OTP" method="post" class="login-form">
 			                    	<div class="form-group">
 			                    		<center><span style="border:none; box-shadow: none; font-size: 12; color:red;">#[flowVars.statusResponse]</span></center>
 			                    		<label class="sr-only" for="form-otp">OTP</label>
@@ -544,9 +560,15 @@ img { max-width: 100%; }
 		                    </div>
                         </div>
                     </div>
-                    <div class="row">
-                        	<h3><font size="2" color="gray">Copyright (c) 2018 Jatelindo Perkasa Abadi</font></h3>
-                    </div>
+					<div class="row">
+						<h3 style="margin:0; mso-line-height-rule:exactly;">
+							<font size="2" color="gray">
+								Copyright &#169; 
+								<script>document.write(new Date().getFullYear())</script>
+								Jatelindo Perkasa Abadi
+							</font>
+						</h3>
+					</div>
                 </div>
             </div>
             

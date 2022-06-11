@@ -26,6 +26,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Variable" />
 		<set-variable variableName="originalPayload" value="#[payload]"
 			doc:name="Variable" />
+		<set-variable variableName="parentUrl" value="${app.base.url}/Emoney/Purchase" 
+			doc:name="Variable" />	
 		<expression-transformer
 			expression="#[originalPayload['transactionType']=org.apache.commons.lang.StringUtils.substringAfterLast(message.inboundProperties.'http.relative.path', '/');originalPayload]"
 			doc:name="Expression" />
@@ -113,6 +115,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Variable" />
 		<set-variable variableName="otp" value="#[payload['form-otp']]"
 			doc:name="Variable" />
+		<set-variable variableName="parentUrl" value="${app.base.url}/Emoney/Purchase" 
+			doc:name="Variable" />
 		<expression-component doc:name="Expression">
 			<![CDATA[
 			regMap = new java.util.HashMap();
@@ -122,7 +126,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			payload = regMap;]]>
 		</expression-component>
 		<pooled-component>
-			<spring-object bean="CacheProcessor" />
+			<spring-object bean="HazelcastStore" />
 		</pooled-component>
 		<set-variable value="#[payload['msisdn']]" variableName="msisdn"
 			doc:name="Variable" />
@@ -159,7 +163,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<expression-component doc:name="Expression">
 					<![CDATA[
@@ -186,7 +190,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<parse-template location="MemberPurchaseCredentials.tmp"
 					mimeType="text/html" doc:name="Parse Template" />
@@ -215,6 +219,8 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			doc:name="Variable" />
 		<set-variable variableName="pin" value="#[payload['form-pin']]"
 			doc:name="Variable" />
+		<set-variable variableName="parentUrl" value="${app.base.url}/Emoney/Purchase" 
+			doc:name="Variable" />
 		<expression-component doc:name="Expression">
 			<![CDATA[
 			regMap = new java.util.HashMap();
@@ -224,7 +230,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			payload = regMap;]]>
 		</expression-component>
 		<pooled-component>
-			<spring-object bean="CacheProcessor" />
+			<spring-object bean="HazelcastStore" />
 		</pooled-component>
 		<set-variable value="#[payload['msisdn']]" variableName="msisdn"
 			doc:name="Variable" />
@@ -297,7 +303,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 									         <description>' + flowVars['description'] + '</description>
 									         <fromMember>' + flowVars['msisdn'] + '</fromMember>
 									         <toMember>' + flowVars['parentUsername'] + '</toMember>
-									         <traceNumber>' + flowVars['parentID'] + '' + flowVars['traceNumber'] + '</traceNumber>
+									         <traceNumber>' + flowVars['traceNumber'] + '</traceNumber>
 									         <transferTypeID>' + flowVars['transferTypeID'] + '</transferTypeID>
 									      </ser:doPayment>
 									   </soapenv:Body>
@@ -345,7 +351,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 							payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
-							<spring-object bean="CacheProcessor" />
+							<spring-object bean="HazelcastStore" />
 						</pooled-component>
 						<set-variable
 							value="62#[org.apache.commons.lang.StringUtils.substring(flowVars['msisdn'], 1)]"
@@ -394,7 +400,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 							payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
-							<spring-object bean="CacheProcessor" />
+							<spring-object bean="HazelcastStore" />
 						</pooled-component>
 						<!-- Callback to Merchant -->
 						<expression-component doc:name="Expression">
@@ -417,7 +423,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 				</choice>
 			</when>
 			<when expression="#[flowVars['status'] == 'INVALID']">
-				<set-variable variableName="statusResponse" value="PIN Incorrect"
+				<set-variable variableName="statusResponse" value="Incorrect PIN"
 					doc:name="Variable" />
 				<parse-template location="MemberPurchaseCredentials.tmp"
 					mimeType="text/html" doc:name="Parse Template" />
@@ -432,7 +438,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<!-- Callback to Merchant -->
 				<expression-component doc:name="Expression">

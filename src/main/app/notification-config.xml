@@ -16,6 +16,60 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
 http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
 
+	<flow name="smsNotificationFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way" path="send.sms.notification" connector-ref="Notification_VM" doc:name="VM"/>
+		<set-variable variableName="context" value="#[payload['context']]" doc:name="Variable"/>
+		<set-variable variableName="logMessage" value="Send OTP to : #[payload['msisdn']]" doc:name="Variable"/>
+		<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="smsSignature" value="/3844Tcbj4D" doc:name="Variable"/>
+		<!--
+		<choice doc:name="Choice">
+			<when expression="#[payload['signature'] == null || org.apache.commons.lang.StringUtils.length(payload['signature']) &gt; 11]">
+				<set-variable variableName="smsSignature" value="" doc:name="Variable"/>
+			</when>
+			<otherwise>
+				<set-variable variableName="smsSignature" value="#[payload['signature']]" doc:name="Variable"/>
+			</otherwise>
+		</choice>
+		-->
+		<expression-component doc:name="Expression"><![CDATA[
+			responseMap = new java.util.HashMap();
+			responseMap['text'] = 'Jaga kerahasiaan kode verifikasi dari siapapun. Kode Verifikasi ' + payload['otp'] + ' berlaku dalam waktu 15 menit. ' + flowVars.smsSignature;
+			responseMap['to'] = payload['msisdn'];
+			responseMap['from'] = 'FELLO';
+			payload = responseMap;]]></expression-component>
+		<jms:outbound-endpoint queue="emoney.notification.sms" connector-ref="Active_MQ" doc:name="JMS"/>
+	</flow>
+	
+	<flow name="emailNotificationFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way" path="send.email.notification" connector-ref="Notification_VM" doc:name="VM"/>
+		<set-variable variableName="context" value="#[payload['context']]" doc:name="Variable"/>
+		<set-variable variableName="logMessage" value="Send email to : #[payload['email']]" doc:name="Variable"/>
+		<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			regMap = new java.util.HashMap();
+			regMap['from']= 'FELLO<noreply@fello.id>';
+			regMap['to']= payload['email'];
+			regMap['subject']= payload['subject'];
+			regMap['body']= payload['content'];
+			payload = regMap;]]></expression-component>
+		<jms:outbound-endpoint queue="emoney.notification.email" connector-ref="Active_MQ" doc:name="JMS"/>
+	</flow>
+	
+	<flow name="urlNotificationFlow">
+		<vm:inbound-endpoint exchange-pattern="one-way" path="send.url.notification" connector-ref="Notification_VM" doc:name="VM"/>
+		<set-variable variableName="context" value="#[payload.remove('context')]" doc:name="Variable"/>
+		<set-variable variableName="callbackURL" value="#[payload.remove('callbackURL')]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			regMap = org.equinox.api.utils.CommonUtil.copyHashMap(payload);
+			regMap['callbackURL'] = flowVars.callbackURL;
+			payload = regMap;]]>
+		</expression-component>
+		<set-variable variableName="logMessage" value="Call URL : #[flowVars.callbackURL] with body #[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+		<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+		<jms:outbound-endpoint queue="notification.va" connector-ref="Active_MQ" doc:name="JMS"/>
+	</flow>
+
 	<flow name="registerRequestNotificationConfigFlow">
 		<vm:inbound-endpoint exchange-pattern="one-way"
 			connector-ref="Notification_VM" path="register.request.notification"
@@ -130,6 +184,8 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 			variableName="ticketID" doc:name="Variable" />
 		<logger level="INFO" message="[Change Credential Email Notification]"
 			doc:name="Logger" />
+		<set-variable variableName="parentUrl" value="${app.base.url.credential}" 
+			doc:name="Variable" />
 		<parse-template location="ChangeCredential.tmp"
 			mimeType="text/html" doc:name="Parse Template" />
 		<expression-component doc:name="Expression">

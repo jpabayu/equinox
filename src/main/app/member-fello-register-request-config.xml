@@ -92,7 +92,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<parse-template location="MemberRegistrationOTP.tmp"
 					mimeType="text/html" doc:name="Parse Template" />
@@ -214,7 +214,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 									payload = regMap;]]>
 								</expression-component>
 								<pooled-component>
-									<spring-object bean="CacheProcessor" />
+									<spring-object bean="HazelcastStore" />
 								</pooled-component>
 								<parse-template location="MemberRegistrationCredentials.tmp"
 									mimeType="text/html" doc:name="Parse Template" />
@@ -315,7 +315,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 										payload = regMap;]]>
 								</expression-component>
 								<pooled-component>
-									<spring-object bean="CacheProcessor" />
+									<spring-object bean="HazelcastStore" />
 								</pooled-component>
 								<parse-template location="MemberRegistrationCredentials.tmp"
 									mimeType="text/html" doc:name="Parse Template" />

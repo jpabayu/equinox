@@ -1,0 +1,844 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd 
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+	<sub-flow name="qrisInquiryFlow">
+		<set-variable variableName="qrisGWGenerator" value="" doc:name="Variable"/>
+		<set-variable variableName="transactionKey" value="" doc:name="Variable"/>
+		<set-variable variableName="responseMap" value="#[new java.util.HashMap()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.qrisGWGenerator = new org.equinox.api.qris.gateway.QrisGWInquiry(
+						flowVars.originalPayload['qrData'], 
+						flowVars.originalPayload['fromMember']);
+						
+			sb = new java.lang.StringBuilder();
+			sb.append(flowVars.originalPayload['parentUsername']);
+			sb.append(flowVars.originalPayload['fromMember']);
+			sb.append(flowVars.qrisGWGenerator.getStan());
+			sb.append(flowVars.context.getCorrelationID());
+			flowVars.transactionKey = flowVars.qrisGWGenerator.generateRrn(sb, sb.toString());]]>
+		</expression-component>
+		<set-variable variableName="transactionCurrency" value="#[flowVars.qrisGWGenerator.getTransactionCurrency()]" doc:name="Variable"/>
+		<choice doc:name="Choice">
+			<when expression="#[flowVars.qrisGWGenerator.isValidQR() != true]">
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('INVALID_QR');
+					payload = flowVars.responseMap;]]>
+				</expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+			</when>
+			<when expression="#[flowVars.qrisGWGenerator.isValidCRC() != true]">
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('INVALID_QR_CRC');
+					payload = flowVars.responseMap;]]>
+				</expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+			</when>
+			<when expression="#[flowVars.transactionCurrency.isSupported() != true]">
+				<expression-component doc:name="Expression"><![CDATA[
+					params = new java.lang.String[]{flowVars.transactionCurrency.getCode()};
+					
+					flowVars.responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('UNSUPPORTED_CURRENCY', params);
+					payload = flowVars.responseMap;]]>
+				</expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="responseHandlerFlow"/>
+			</when>
+			<when expression="#[flowVars.qrisGWGenerator.isMerchantExists() != true]">
+				<expression-component doc:name="Expression"><![CDATA[
+					payload = flowVars.qrisGWGenerator.generateRequest();]]>
+				</expression-component>
+				<set-variable variableName="logMessage" value="(QRIS GW INQUIRY MPAN REQUEST) : #[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+				<http:request config-ref="HTTP_QRIS_Request_Configuration" path="payment/inquiryMPAN" method="POST" doc:name="HTTP">
+					<http:request-builder>
+						<http:header headerName="Content-Type" value="application/x-www-form-urlencoded"/>
+						<http:header headerName="Correlation-ID" value="#[flowVars.context.getCorrelationID()]"/>
+						<http:header headerName="User-Agent" value="equinox"/>
+					</http:request-builder>
+				</http:request>
+				<set-variable variableName="logMessage" value="(QRIS GW INQUIRY MPAN RESPONSE) : #[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+				<json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+				<set-variable variableName="qrisGwResponse" value="#[payload]" doc:name="Variable"/>
+				<set-payload value="#[org.equinox.api.qris.gateway.QrisGWStatusMapper.getResponseStatus(payload['39']).getMessage()]" doc:name="Set Payload"/>
+				<message-filter onUnaccepted="errorResponseFlow" doc:name="Message" >
+					<expression-filter expression="#[payload == 'PROCESSED']" />
+				</message-filter>
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.qrisGWGenerator.initMerchant(flowVars.qrisGwResponse['57']);
+					flowVars.responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+					
+					qrisInquiryResponse = new org.equinox.api.pojo.payment.qris.QrisInquiryResponse();
+					qrisInquiryResponse.setTransactionKey(flowVars.transactionKey);
+					qrisInquiryResponse.setAcquirerDomain(flowVars.qrisGWGenerator.getAcquirerDomain());
+					qrisInquiryResponse.setMerchantPAN(flowVars.qrisGWGenerator.getMerchantPAN());
+					qrisInquiryResponse.setMerchantID(flowVars.qrisGWGenerator.getMerchantID());
+					qrisInquiryResponse.setMerchantName(flowVars.qrisGWGenerator.getMerchantName());
+					qrisInquiryResponse.setMerchantCity(flowVars.qrisGWGenerator.getMerchantCity());
+					qrisInquiryResponse.setMerchantCriteria(flowVars.qrisGWGenerator.getMerchantCriteria());  
+					qrisInquiryResponse.setMerchantType(flowVars.qrisGWGenerator.getMerchantType()); 
+					qrisInquiryResponse.setCountryCode(flowVars.qrisGWGenerator.getCountryCode()); 
+					qrisInquiryResponse.setPostalCode(flowVars.qrisGWGenerator.getPostalCode()); 
+					qrisInquiryResponse.setAdditionalData(flowVars.qrisGWGenerator.getAdditionalData()); 
+					qrisInquiryResponse.setAcceptorTID(flowVars.qrisGWGenerator.getAcceptorTID());
+					qrisInquiryResponse.setTransactionCurrency(flowVars.qrisGWGenerator.getTransactionCurrency());
+					qrisInquiryResponse.setPercentageTip(flowVars.qrisGWGenerator.isPercentageTip());
+					qrisInquiryResponse.setAmount(flowVars.qrisGWGenerator.getAmount());
+					qrisInquiryResponse.setConvenienceFee(flowVars.qrisGWGenerator.getConvenienceFee());
+							
+					flowVars.responseMap['qrisInquiryResponse'] = qrisInquiryResponse;
+					
+					hazelcastMap = new java.util.HashMap();
+					hazelcastMap['methodType'] = 'PUT';
+					hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+					hazelcastMap['key'] = flowVars.transactionKey;
+					hazelcastMap['value'] = flowVars.qrisGWGenerator;
+					hazelcastMap['ttl'] = ${qris.cache.ttl.inquiry};
+					payload = hazelcastMap;]]>
+				</expression-component>
+				<pooled-component>
+					<spring-object bean="HazelcastStore" />
+				</pooled-component>
+				<set-payload value="#[flowVars.responseMap]" doc:name="Set Payload"/>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression"><![CDATA[
+					qrisInquiryResponse = new org.equinox.api.pojo.payment.qris.QrisInquiryResponse();
+					qrisInquiryResponse.setTransactionKey(flowVars.transactionKey);
+					qrisInquiryResponse.setAcquirerDomain(flowVars.qrisGWGenerator.getAcquirerDomain());
+					qrisInquiryResponse.setMerchantPAN(flowVars.qrisGWGenerator.getMerchantPAN());
+					qrisInquiryResponse.setMerchantID(flowVars.qrisGWGenerator.getMerchantID());
+					qrisInquiryResponse.setMerchantName(flowVars.qrisGWGenerator.getMerchantName());
+					qrisInquiryResponse.setMerchantCity(flowVars.qrisGWGenerator.getMerchantCity());
+					qrisInquiryResponse.setMerchantCriteria(flowVars.qrisGWGenerator.getMerchantCriteria());  
+					qrisInquiryResponse.setMerchantType(flowVars.qrisGWGenerator.getMerchantType()); 
+					qrisInquiryResponse.setCountryCode(flowVars.qrisGWGenerator.getCountryCode()); 
+					qrisInquiryResponse.setPostalCode(flowVars.qrisGWGenerator.getPostalCode()); 
+					qrisInquiryResponse.setAdditionalData(flowVars.qrisGWGenerator.getAdditionalData()); 
+					qrisInquiryResponse.setAcceptorTID(flowVars.qrisGWGenerator.getAcceptorTID());
+					qrisInquiryResponse.setTransactionCurrency(flowVars.qrisGWGenerator.getTransactionCurrency());
+					qrisInquiryResponse.setPercentageTip(flowVars.qrisGWGenerator.isPercentageTip());
+					qrisInquiryResponse.setAmount(flowVars.qrisGWGenerator.getAmount());
+					qrisInquiryResponse.setConvenienceFee(flowVars.qrisGWGenerator.getConvenienceFee());
+							
+					flowVars.responseMap['qrisInquiryResponse'] = qrisInquiryResponse;]]>
+				</expression-component>
+				<choice doc:name="Choice">
+					<when expression="#[flowVars.qrisGWGenerator.isMerchantOnUs() == true]">
+						<expression-component doc:name="Expression"><![CDATA[
+							nnsId = flowVars.qrisGWGenerator.getMerchantPAN();
+							nnsId = org.apache.commons.lang.StringUtils.substring(nnsId, 0, nnsId.length()-1);
+							
+							request = new org.equinox.api.bellatrix.pos.LoadTerminalByNNSIDRequest();
+							request.setToken(flowVars.qrisToken);
+							request.setNnsId(nnsId);
+							request.setTerminalId(flowVars.qrisGWGenerator.getFelloTerminalId());
+							
+							payload = request;]]>
+						</expression-component>
+						<flow-ref name="bltrxLoadTerminalByNNSIDFlow" doc:name="Flow Reference"/>
+						<set-variable variableName="bltrxResponse" value="#[payload]" doc:name="Variable"/>
+						<set-variable variableName="status" value="#[payload.getStatus().getMessage()]" doc:name="Variable"/>
+						<set-payload value="#['INVALID_MERCHANT']" doc:name="Set Payload"/>
+						<message-filter onUnaccepted="errorResponseFlow" doc:name="Message">
+							<expression-filter expression="#[flowVars.status == 'PROCESSED']" />
+						</message-filter>
+						<expression-component doc:name="Expression"><![CDATA[
+							terminal = flowVars.bltrxResponse.getTerminal().getFirst();
+							flowVars.qrisGWGenerator.setMerchantEmail(terminal.getEmail());
+							flowVars.qrisGWGenerator.setNotificationUrl(terminal.getNotificationURL());
+							
+							flowVars.responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+								
+							hazelcastMap = new java.util.HashMap();
+							hazelcastMap['methodType'] = 'PUT';
+							hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+							hazelcastMap['key'] = flowVars.transactionKey;
+							hazelcastMap['value'] = flowVars.qrisGWGenerator;
+							hazelcastMap['ttl'] = ${qris.cache.ttl.inquiry};
+							payload = hazelcastMap;]]>
+						</expression-component>
+						<pooled-component>
+							<spring-object bean="HazelcastStore" />
+						</pooled-component>
+						<set-payload value="#[flowVars.responseMap]" doc:name="Set Payload"/>
+						<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression"><![CDATA[
+							flowVars.responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+								
+							hazelcastMap = new java.util.HashMap();
+							hazelcastMap['methodType'] = 'PUT';
+							hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+							hazelcastMap['key'] = flowVars.transactionKey;
+							hazelcastMap['value'] = flowVars.qrisGWGenerator;
+							hazelcastMap['ttl'] = ${qris.cache.ttl.inquiry};
+							payload = hazelcastMap;]]>
+						</expression-component>
+						<pooled-component>
+							<spring-object bean="HazelcastStore" />
+						</pooled-component>
+						<set-payload value="#[flowVars.responseMap]" doc:name="Set Payload"/>
+						<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+					</otherwise>
+				</choice>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="qrisCreditFlow">
+		<expression-component doc:name="Expression"><![CDATA[					
+			hazelcastMap = new java.util.HashMap();
+			hazelcastMap['methodType'] = 'GET';
+			hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+			hazelcastMap['key'] = flowVars.originalPayload['transactionKey'];
+			payload = hazelcastMap;]]>
+        </expression-component>
+		<pooled-component>
+			<spring-object bean="HazelcastStore" />
+		</pooled-component>
+		<set-variable variableName="qrisGWGeneratorCache" value="#[(org.equinox.api.qris.gateway.QrisGWInquiry)payload]" doc:name="Variable"/>
+		<set-payload value="#['NO_TRANSACTION']" doc:name="Set Payload"/>
+		<message-filter onUnaccepted="htmlErrorResponseFlow" doc:name="Message">
+			<expression-filter expression="#[flowVars.qrisGWGeneratorCache != null]" />
+		</message-filter>
+		<set-variable variableName="statusResponse" value="" doc:name="Variable"/>
+		<set-variable variableName="token" value="#[flowVars.originalPayload['token']]" doc:name="Variable"/>
+		<set-variable variableName="transactionKey" value="#[flowVars.originalPayload['transactionKey']]" doc:name="Variable"/>
+		<set-variable variableName="callbackUrl" value="#[flowVars.originalPayload['callbackUrl']]" doc:name="Variable"/>
+		<set-variable variableName="amount" value="#[flowVars.originalPayload['amount']]" doc:name="Variable"/>
+		<set-variable variableName="convenienceFee" value="#[flowVars.originalPayload['convenienceFee']]" doc:name="Variable"/>
+		<parse-template location="QRISCreditCredentials.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<set-property propertyName="content-type" value="text/html"
+			doc:name="Property" />
+	</sub-flow>	
+	
+	<sub-flow name="qrisCreditConfirmationFlow">
+		<set-variable variableName="responseMap" value="#[new java.util.HashMap()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[					
+			hazelcastMap = new java.util.HashMap();
+			hazelcastMap['methodType'] = 'GET';
+			hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+			hazelcastMap['key'] = flowVars.originalPayload['transactionKey'];
+			payload = hazelcastMap;]]>
+        </expression-component>
+		<pooled-component>
+			<spring-object bean="HazelcastStore" />
+		</pooled-component>
+		<set-variable variableName="qrisGWGeneratorCache" value="#[(org.equinox.api.qris.gateway.QrisGWInquiry)payload]" doc:name="Variable"/>
+		<set-payload value="#['NO_TRANSACTION']" doc:name="Set Payload"/>
+		<message-filter onUnaccepted="htmlErrorResponseFlow" doc:name="Message">
+			<expression-filter expression="#[flowVars.qrisGWGeneratorCache != null]" />
+		</message-filter>
+		<set-variable variableName="qrisGWGenerator" value="" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.qrisGWGenerator = new org.equinox.api.qris.gateway.QrisGWCredit(
+						flowVars.qrisGWGeneratorCache,
+						flowVars.originalPayload['amount'],
+						flowVars.originalPayload['convenienceFee']);]]>
+		</expression-component>
+		<set-variable variableName="fromMember" value="#[flowVars.qrisGWGenerator.getFromMember()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			request = new org.equinox.api.bellatrix.access.ValidateCredentialRequest();
+			request.setToken(flowVars.qrisToken);
+			request.setUsername(flowVars.fromMember);
+			request.setAccessTypeId('${access.type.id.pin}');
+			request.setCredential(flowVars.originalPayload['pin']);
+			
+			payload = request;]]>
+		</expression-component>
+		<flow-ref name="bltrxValidateCredentialFlow" doc:name="Flow Reference"/>
+		<set-payload value="#[payload.getStatus().getMessage()]" doc:name="Set Payload"/>
+		<choice doc:name="Choice">
+			<when expression="#[payload == 'VALID']">
+				<set-variable variableName="totalAmount" value="#[flowVars.qrisGWGenerator.getTotalAmount()]" doc:name="Variable"/>
+				<set-variable variableName="traceNumber" value="#[org.equinox.api.utils.EMoneyUtil.generateTraceNumber(org.equinox.api.data.Constants.TRX_QRIS)]" doc:name="Variable"/>
+				<set-variable variableName="qrisCreditResponse" value="#[new org.equinox.api.pojo.payment.qris.QrisCreditResponse()]" doc:name="Variable"/>
+				<set-variable variableName="qrisTransferTypeId" value="#[flowVars.qrisGWGenerator.getTransferTypeId()]" doc:name="Variable"/>
+				<set-variable variableName="referenceNumber" value="" doc:name="Variable"/>
+				<set-variable variableName="qrisInvoiceId" value="#[flowVars.qrisGWGenerator.getInvoiceId()]" doc:name="Variable"/>
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.qrisGWGenerator.setTraceNumber(flowVars.traceNumber);
+					
+					flowVars.qrisCreditResponse.setAcquirerDomain(flowVars.qrisGWGenerator.getAcquirerDomain());
+					flowVars.qrisCreditResponse.setMerchantPAN(flowVars.qrisGWGenerator.getMerchantPAN());
+					flowVars.qrisCreditResponse.setMerchantID(flowVars.qrisGWGenerator.getMerchantID());
+					flowVars.qrisCreditResponse.setMerchantName(flowVars.qrisGWGenerator.getMerchantName());
+					flowVars.qrisCreditResponse.setMerchantCity(flowVars.qrisGWGenerator.getMerchantCity());
+					flowVars.qrisCreditResponse.setMerchantCriteria(flowVars.qrisGWGenerator.getMerchantCriteria());  
+					flowVars.qrisCreditResponse.setMerchantType(flowVars.qrisGWGenerator.getMerchantType()); 
+					flowVars.qrisCreditResponse.setCountryCode(flowVars.qrisGWGenerator.getCountryCode()); 
+					flowVars.qrisCreditResponse.setPostalCode(flowVars.qrisGWGenerator.getPostalCode()); 
+					flowVars.qrisCreditResponse.setAdditionalData(flowVars.qrisGWGenerator.getAdditionalData()); 
+					flowVars.qrisCreditResponse.setAcceptorTID(flowVars.qrisGWGenerator.getAcceptorTID());
+					flowVars.qrisCreditResponse.setTransactionCurrency(flowVars.qrisGWGenerator.getTransactionCurrency());
+					flowVars.qrisCreditResponse.setPercentageTip(flowVars.qrisGWGenerator.isPercentageTip());
+					flowVars.qrisCreditResponse.setAmount(flowVars.qrisGWGenerator.getAmount());
+					flowVars.qrisCreditResponse.setConvenienceFee(flowVars.qrisGWGenerator.getConvenienceFee());
+					flowVars.qrisCreditResponse.setTotalAmount(flowVars.totalAmount);
+					flowVars.qrisCreditResponse.setTraceNumber(null);
+					flowVars.qrisCreditResponse.setReferenceNumber(null);]]>
+				</expression-component>
+				<choice doc:name="Choice">
+					<when expression="#[flowVars.qrisGWGenerator.isMerchantOnUs() == true]">
+						<expression-component doc:name="Expression"><![CDATA[
+							sb = new java.lang.StringBuilder();
+							calendar = java.util.Calendar.getInstance(TimeZone.getTimeZone("GMT"+org.equinox.api.data.Constants.JPA_TIMEZONE));
+							localDate = org.equinox.api.iso.ISOUtils.getLocalTransactionDate(sb, calendar);
+							
+							random = new java.util.Random();
+							stan = flowVars.qrisGWGenerator.getStan();
+							
+							flowVars.referenceNumber = flowVars.qrisGWGenerator.getRrn() + '0' + localDate + stan;]]>
+						</expression-component>
+						<flow-ref name="qrisCreditOnUsFlow" doc:name="Flow Reference"/>
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression"><![CDATA[
+							flowVars.referenceNumber = flowVars.qrisGWGenerator.getRrn() + '1';]]>
+						</expression-component>
+						<flow-ref name="qrisCreditOffUsFlow" doc:name="Flow Reference"/>
+					</otherwise>
+				</choice>
+			</when>
+			<when expression="#[payload == 'INVALID']">
+				<set-variable variableName="statusResponse" value="Incorrect PIN" doc:name="Variable"/>
+				<set-variable variableName="token" value="#[flowVars.originalPayload['token']]" doc:name="Variable"/>
+				<set-variable variableName="transactionKey" value="#[flowVars.originalPayload['transactionKey']]" doc:name="Variable"/>
+				<set-variable variableName="callbackUrl" value="#[flowVars.originalPayload['callbackUrl']]" doc:name="Variable"/>
+				<set-variable variableName="amount" value="#[flowVars.originalPayload['amount'].toPlainString()]" doc:name="Variable"/>
+				<set-variable variableName="convenienceFee" value="#[flowVars.originalPayload['convenienceFee'].toPlainString()]" doc:name="Variable"/>
+				<parse-template location="QRISCreditCredentials.tmp"
+					mimeType="text/html" doc:name="Parse Template" />
+				<set-property propertyName="content-type" value="text/html"
+					doc:name="Property" />
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression"><![CDATA[
+					hazelcastMap = new java.util.HashMap();
+					hazelcastMap['methodType'] = 'DELETE';
+					hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+					hazelcastMap['key'] = flowVars.originalPayload['transactionKey'];
+					payload = hazelcastMap;]]>
+		        </expression-component>
+		        <pooled-component>
+					<spring-object bean="HazelcastStore" />
+				</pooled-component>
+				<flow-ref name="htmlErrorResponseFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="qrisCreditOnUsFlow">
+		<choice doc:name="Choice">
+			<when expression="#[flowVars.qrisGWGenerator.isStaticQR() == false]">
+				<choice doc:name="Choice">
+					<when expression="#[org.apache.commons.lang.StringUtils.isBlank(flowVars.qrisInvoiceId) == false]">
+						<expression-component doc:name="Expression"><![CDATA[					
+							hazelcastMap = new java.util.HashMap();
+							hazelcastMap['methodType'] = 'GET';
+							hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INVOICE;
+							hazelcastMap['key'] = flowVars.qrisInvoiceId;
+							payload = hazelcastMap;]]>
+				        </expression-component>
+						<pooled-component>
+							<spring-object bean="HazelcastStore" />
+						</pooled-component>
+						<set-variable variableName="qrisInvoiceIdExist" value="#[payload]" doc:name="Variable"/>
+						<set-payload value="#['INVALID_QR']" doc:name="Set Payload"/>
+						<message-filter onUnaccepted="htmlErrorResponseFlow" doc:name="Message">
+							<expression-filter expression="#[flowVars.qrisInvoiceIdExist == null || ((flowVars.qrisInvoiceIdExist instanceof org.mule.transport.NullPayload) == true)]" />
+						</message-filter>
+						<expression-component doc:name="Expression"><![CDATA[
+							hazelcastMap = new java.util.HashMap();
+							hazelcastMap['methodType'] = 'PUT';
+							hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INVOICE;
+							hazelcastMap['key'] = flowVars.qrisInvoiceId;
+							hazelcastMap['value'] = true;
+							hazelcastMap['ttl'] = ${qris.cache.ttl.invoice};
+							payload = hazelcastMap;]]>
+				        </expression-component>
+				        <pooled-component>
+							<spring-object bean="HazelcastStore" />
+						</pooled-component>
+						<flow-ref name="qrisCreditOnUsDoPaymentFlow" doc:name="Flow Reference"/>
+					</when>
+					<otherwise>
+						<flow-ref name="qrisCreditOnUsDoPaymentFlow" doc:name="Flow Reference"/>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<flow-ref name="qrisCreditOnUsDoPaymentFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="qrisCreditOnUsDoPaymentFlow">
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.responseMap['qrisCreditResponse'] = flowVars.qrisCreditResponse;
+			jsonCache = org.equinox.api.utils.CommonUtil.objectToJson(flowVars.responseMap);
+		
+			bltrxRequest = new org.equinox.api.bellatrix.payment.DoPaymentRequest();
+			bltrxRequest.setToken(flowVars.qrisToken);
+			bltrxRequest.setFromMember(flowVars.fromMember);
+			bltrxRequest.setToMember(flowVars.qrisGWGenerator.getMerchantID());
+			bltrxRequest.setAmount(flowVars.totalAmount);
+			bltrxRequest.setTraceNumber(flowVars.traceNumber);
+			bltrxRequest.setTransferTypeId(flowVars.qrisTransferTypeId);
+			bltrxRequest.setDescription(flowVars.qrisInvoiceId, '');
+			bltrxRequest.setRemark(jsonCache);
+			bltrxRequest.setReferenceNumber(flowVars.referenceNumber);
+			bltrxRequest.setOriginator(flowVars.qrisGWGenerator.getMerchantPAN());
+			payload = bltrxRequest;]]>
+		</expression-component>
+		<flow-ref name="bltrxDoPaymentFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="doPaymentResponse" value="#[payload]" doc:name="Variable"/>
+		<set-variable variableName="status" value="#[payload.getStatus().getMessage()]" doc:name="Variable"/>
+		<choice doc:name="Choice">
+			<when expression="#[flowVars.status != 'PROCESSED']">
+				<expression-component doc:name="Expression"><![CDATA[
+					hazelcastMap = new java.util.HashMap();
+					hazelcastMap['methodType'] = 'DELETE';
+					hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+					hazelcastMap['key'] = flowVars.originalPayload['transactionKey'];
+					payload = hazelcastMap;]]>
+		        </expression-component>
+		        <pooled-component>
+					<spring-object bean="HazelcastStore" />
+				</pooled-component>
+		        <flow-ref name="qrisNotificationOnErrorFlow" doc:name="Flow Reference"/>
+		        <set-payload value="#[flowVars.status]" doc:name="Set Payload"/>
+		        <flow-ref name="htmlErrorResponseFlow" doc:name="Flow Reference"/>
+			</when>
+			<otherwise>
+				<set-variable variableName="transactionDate" value="#[java.util.Calendar.getInstance()]" doc:name="Variable"/>
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.qrisGWGenerator.setTransferId(flowVars.doPaymentResponse.getId());
+					flowVars.qrisGWGenerator.setCustomerPAN(flowVars.doPaymentResponse.getFromMember().getId());
+					flowVars.qrisGWGenerator.setCustomerName(flowVars.doPaymentResponse.getFromMember().getName());
+					
+					flowVars.qrisCreditResponse.setTraceNumber(flowVars.traceNumber);
+					flowVars.qrisCreditResponse.setReferenceNumber(flowVars.referenceNumber);
+									
+					hazelcastMap = new java.util.HashMap();
+					hazelcastMap['methodType'] = 'PUT';
+					hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_CREDIT;
+					hazelcastMap['key'] = flowVars.originalPayload['transactionKey'];
+					hazelcastMap['value'] = flowVars.qrisGWGenerator;
+					hazelcastMap['ttl'] = ${qris.cache.ttl.credit};
+					payload = hazelcastMap;]]>
+		        </expression-component>
+		        <pooled-component>
+					<spring-object bean="HazelcastStore" />
+				</pooled-component>
+		        <expression-component doc:name="Expression"><![CDATA[
+					hazelcastMap = new java.util.HashMap();
+					hazelcastMap['methodType'] = 'DELETE';
+					hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+					hazelcastMap['key'] = flowVars.originalPayload['transactionKey'];
+					payload = hazelcastMap;]]>
+		        </expression-component>
+		        <pooled-component>
+					<spring-object bean="HazelcastStore" />
+				</pooled-component>
+		        <flow-ref name="qrisNotificationOnSuccessFlow" doc:name="Flow Reference"/>
+				<flow-ref name="qrisCreditCallbackFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="qrisCreditOffUsFlow">
+		<set-variable variableName="switchingUsername" value="${jalin.username}" doc:name="Variable"/>
+        <expression-component doc:name="Expression"><![CDATA[
+			flowVars.responseMap['qrisCreditResponse'] = flowVars.qrisCreditResponse;
+			jsonCache = org.equinox.api.utils.CommonUtil.objectToJson(flowVars.responseMap);
+			
+			bltrxRequest = new org.equinox.api.bellatrix.payment.DoPaymentRequest();
+			bltrxRequest.setToken(flowVars.qrisToken);
+			bltrxRequest.setFromMember(flowVars.fromMember);
+			bltrxRequest.setToMember(flowVars.switchingUsername);
+			bltrxRequest.setAmount(flowVars.totalAmount);
+			bltrxRequest.setTraceNumber(flowVars.traceNumber);
+			bltrxRequest.setTransferTypeId(flowVars.qrisTransferTypeId);
+			bltrxRequest.setDescription(flowVars.qrisInvoiceId, '');
+			bltrxRequest.setRemark(jsonCache);
+			bltrxRequest.setReferenceNumber(flowVars.referenceNumber);
+			bltrxRequest.setOriginator(flowVars.qrisGWGenerator.getMerchantPAN());
+			bltrxRequest.setStatus('PENDING');
+			payload = bltrxRequest;]]>
+		</expression-component>
+		<flow-ref name="bltrxDoPaymentFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="doPaymentResponse" value="#[payload]" doc:name="Variable"/>
+		<set-variable variableName="status" value="#[payload.getStatus().getMessage()]" doc:name="Variable"/>
+		<choice doc:name="Choice">
+			<when expression="#[flowVars.status != 'PROCESSED']">
+				<expression-component doc:name="Expression"><![CDATA[
+					hazelcastMap = new java.util.HashMap();
+					hazelcastMap['methodType'] = 'DELETE';
+					hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+					hazelcastMap['key'] = flowVars.originalPayload['transactionKey'];
+					payload = hazelcastMap;]]>
+		        </expression-component>
+		        <pooled-component>
+					<spring-object bean="HazelcastStore" />
+				</pooled-component>
+				<set-payload value="#[flowVars.status]" doc:name="Set Payload"/>
+		        <flow-ref name="htmlErrorResponseFlow" doc:name="Flow Reference"/>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.qrisGWGenerator.setTransferId(flowVars.doPaymentResponse.getId());
+					flowVars.qrisGWGenerator.setCustomerPAN(flowVars.doPaymentResponse.getFromMember().getId());
+					flowVars.qrisGWGenerator.setCustomerName(flowVars.doPaymentResponse.getFromMember().getName());
+									
+					hazelcastMap = new java.util.HashMap();
+					hazelcastMap['methodType'] = 'PUT';
+					hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_CREDIT;
+					hazelcastMap['key'] = flowVars.originalPayload['transactionKey'];
+					hazelcastMap['value'] = flowVars.qrisGWGenerator;
+					hazelcastMap['ttl'] = ${qris.cache.ttl.credit};
+					payload = hazelcastMap;]]>
+		        </expression-component>
+		        <pooled-component>
+					<spring-object bean="HazelcastStore" />
+				</pooled-component>
+		        <expression-component doc:name="Expression"><![CDATA[
+					hazelcastMap = new java.util.HashMap();
+					hazelcastMap['methodType'] = 'DELETE';
+					hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_INQUIRY;
+					hazelcastMap['key'] = flowVars.originalPayload['transactionKey'];
+					payload = hazelcastMap;]]>
+		        </expression-component>
+		        <pooled-component>
+					<spring-object bean="HazelcastStore" />
+				</pooled-component>
+				<expression-component doc:name="Expression"><![CDATA[
+					payload = flowVars.qrisGWGenerator.generateRequest();]]>
+				</expression-component>
+				<set-variable variableName="logMessage" value="(QRIS GW CREDIT REQUEST) : #[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+				<http:request config-ref="HTTP_QRIS_Request_Configuration" path="payment/credit" method="POST" doc:name="HTTP">
+					<http:request-builder>
+						<http:header headerName="Content-Type" value="application/x-www-form-urlencoded"/>
+						<http:header headerName="Correlation-ID" value="#[flowVars.context.getCorrelationID()]"/>
+						<http:header headerName="User-Agent" value="equinox"/>
+					</http:request-builder>
+				</http:request>
+				<set-variable variableName="logMessage" value="(QRIS GW CREDIT RESPONSE) : #[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+				<json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+				<set-variable variableName="qrisGwResponse" value="#[payload]" doc:name="Variable"/>
+				<set-payload value="#[org.equinox.api.qris.gateway.QrisGWStatusMapper.getResponseStatus(payload['39']).getMessage()]" doc:name="Set Payload"/>
+				<message-filter onUnaccepted="errorResponseFlow" doc:name="Message" >
+					<expression-filter expression="#[payload == 'PROCESSED']" />
+				</message-filter>
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.qrisCreditResponse.setTraceNumber(flowVars.traceNumber);
+					flowVars.referenceNumber = flowVars.referenceNumber + org.apache.commons.lang.StringUtils.substring(flowVars.qrisGwResponse['123'],0,10);
+					flowVars.qrisCreditResponse.setReferenceNumber(flowVars.referenceNumber);]]>
+				</expression-component>
+				<flow-ref name="qrisCreditCallbackFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="qrisCheckStatusFlow">
+		<set-variable variableName="responseMap" value="#[new java.util.HashMap()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			hazelcastMap = new java.util.HashMap();
+			hazelcastMap['methodType'] = 'GET';
+			hazelcastMap['name'] = org.equinox.api.data.Constants.MAP_QRIS_CREDIT;
+			hazelcastMap['key'] = flowVars.originalPayload['transactionKey'].substring(0, 12);
+			payload = hazelcastMap;]]>
+        </expression-component>
+        <pooled-component>
+			<spring-object bean="HazelcastStore" />
+		</pooled-component>
+        <set-variable variableName="qrisGWGenerator" value="#[(org.equinox.api.qris.gateway.QrisGWCredit)payload]" doc:name="Variable"/>
+        <set-payload value="#['NO_TRANSACTION']" doc:name="Set Payload"/>
+		<message-filter onUnaccepted="errorResponseFlow" doc:name="Message">
+			<expression-filter expression="#[flowVars.qrisGWGenerator != null]" />
+		</message-filter>
+		<expression-component doc:name="Expression"><![CDATA[
+			bltrxRequest = new org.equinox.api.bellatrix.payment.TransactionStatusRequest();
+			bltrxRequest.setToken(flowVars.qrisToken);
+			bltrxRequest.setTraceNumber(flowVars.qrisGWGenerator.getTraceNumber());
+			payload = bltrxRequest;]]>
+		</expression-component>
+		<flow-ref name="bltrxTransactionStatusFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="trxStatusResponse" value="#[payload.getTransaction()]" doc:name="Variable"/>
+		<set-payload value="#[payload.getStatus().getMessage()]" doc:name="Set Payload"/>
+		<message-filter onUnaccepted="errorResponseFlow" doc:name="Message">
+			<expression-filter expression="#[payload == 'PROCESSED']" />
+		</message-filter>
+		<set-variable variableName="transactionState" value="#[flowVars.trxStatusResponse.getTransactionState()]" doc:name="Variable"/>
+		<set-variable variableName="referenceNumber" value="#[flowVars.trxStatusResponse.getReferenceNumber()]" doc:name="Variable"/>
+		<set-variable variableName="totalAmount" value="#[flowVars.trxStatusResponse.getAmount()]" doc:name="Variable"/>
+		<choice doc:name="Choice">
+			<when expression="#[flowVars.transactionState == 'PROCESSED']">
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+					
+					qrisCheckStatusResponse = new org.equinox.api.pojo.payment.qris.QrisCheckStatusResponse();
+					qrisCheckStatusResponse.setAcquirerDomain(flowVars.qrisGWGenerator.getAcquirerDomain());
+					qrisCheckStatusResponse.setMerchantPAN(flowVars.qrisGWGenerator.getMerchantPAN());
+					qrisCheckStatusResponse.setMerchantID(flowVars.qrisGWGenerator.getMerchantID());
+					qrisCheckStatusResponse.setMerchantName(flowVars.qrisGWGenerator.getMerchantName());
+					qrisCheckStatusResponse.setMerchantCity(flowVars.qrisGWGenerator.getMerchantCity());
+					qrisCheckStatusResponse.setMerchantCriteria(flowVars.qrisGWGenerator.getMerchantCriteria());  
+					qrisCheckStatusResponse.setMerchantType(flowVars.qrisGWGenerator.getMerchantType()); 
+					qrisCheckStatusResponse.setCountryCode(flowVars.qrisGWGenerator.getCountryCode()); 
+					qrisCheckStatusResponse.setPostalCode(flowVars.qrisGWGenerator.getPostalCode()); 
+					qrisCheckStatusResponse.setAdditionalData(flowVars.qrisGWGenerator.getAdditionalData()); 
+					qrisCheckStatusResponse.setAcceptorTID(flowVars.qrisGWGenerator.getAcceptorTID());
+					qrisCheckStatusResponse.setTransactionCurrency(flowVars.qrisGWGenerator.getTransactionCurrency());
+					qrisCheckStatusResponse.setPercentageTip(flowVars.qrisGWGenerator.isPercentageTip());
+					qrisCheckStatusResponse.setAmount(flowVars.qrisGWGenerator.getAmount());
+					qrisCheckStatusResponse.setConvenienceFee(flowVars.qrisGWGenerator.getConvenienceFee());
+					qrisCheckStatusResponse.setTotalAmount(flowVars.totalAmount);
+					qrisCheckStatusResponse.setTraceNumber(flowVars.qrisGWGenerator.getTraceNumber());
+					qrisCheckStatusResponse.setReferenceNumber(flowVars.referenceNumber);
+					
+					flowVars.responseMap['qrisCheckStatusResponse'] = qrisCheckStatusResponse;
+					payload = responseMap;]]>
+				</expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+			</when>
+			<when expression="#[flowVars.transactionState == 'PENDING']">
+				<choice doc:name="Choice">
+					<when expression="#[flowVars.qrisGWGenerator.isMerchantOnUs() == true]">
+						<expression-component doc:name="Expression"><![CDATA[
+							flowVars.responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus(flowVars.transactionState);
+							payload = flowVars.responseMap;]]>
+						</expression-component>
+						<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression"><![CDATA[
+							requestMap = new java.util.HashMap();
+							requestMap['rrn'] = flowVars.qrisGWGenerator.getRrn();
+							payload = requestMap;]]>
+						</expression-component>
+						<set-variable variableName="logMessage" value="(QRIS GW CHECK STATUS REQUEST) : #[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+						<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+						<http:request config-ref="HTTP_QRIS_Request_Configuration" path="payment/check-status" method="POST" doc:name="HTTP">
+							<http:request-builder>
+								<http:header headerName="Content-Type" value="application/x-www-form-urlencoded"/>
+								<http:header headerName="Correlation-ID" value="#[flowVars.context.getCorrelationID()]"/>
+								<http:header headerName="User-Agent" value="equinox"/>
+							</http:request-builder>
+						</http:request>
+						<set-variable variableName="logMessage" value="(QRIS GW CHECK STATUS RESPONSE) : #[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+						<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+						<json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+						<set-variable variableName="qrisGwResponse" value="#[payload]" doc:name="Variable"/>
+						<set-payload value="#[org.equinox.api.qris.gateway.QrisGWStatusMapper.getResponseStatus(payload['39']).getMessage()]" doc:name="Set Payload"/>
+						<message-filter onUnaccepted="errorResponseFlow" doc:name="Message">
+							<expression-filter expression="#[payload == 'PROCESSED']" />
+						</message-filter>
+						<expression-component doc:name="Expression"><![CDATA[
+							flowVars.responseMap['status']= org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+							
+							//flowVars.referenceNumber = flowVars.referenceNumber + org.apache.commons.lang.StringUtils.substring(flowVars.qrisGwResponse['123'],0,10);
+							flowVars.referenceNumber = flowVars.qrisGwResponse['37'] + '1' + org.apache.commons.lang.StringUtils.substring(flowVars.qrisGwResponse['123'],0,10);
+							
+							qrisCheckStatusResponse = new org.equinox.api.pojo.payment.qris.QrisCheckStatusResponse();
+							qrisCheckStatusResponse.setAcquirerDomain(flowVars.qrisGWGenerator.getAcquirerDomain());
+							qrisCheckStatusResponse.setMerchantPAN(flowVars.qrisGWGenerator.getMerchantPAN());
+							qrisCheckStatusResponse.setMerchantID(flowVars.qrisGWGenerator.getMerchantID());
+							qrisCheckStatusResponse.setMerchantName(flowVars.qrisGWGenerator.getMerchantName());
+							qrisCheckStatusResponse.setMerchantCity(flowVars.qrisGWGenerator.getMerchantCity());
+							qrisCheckStatusResponse.setMerchantCriteria(flowVars.qrisGWGenerator.getMerchantCriteria());  
+							qrisCheckStatusResponse.setMerchantType(flowVars.qrisGWGenerator.getMerchantType()); 
+							qrisCheckStatusResponse.setCountryCode(flowVars.qrisGWGenerator.getCountryCode()); 
+							qrisCheckStatusResponse.setPostalCode(flowVars.qrisGWGenerator.getPostalCode()); 
+							qrisCheckStatusResponse.setAdditionalData(flowVars.qrisGWGenerator.getAdditionalData()); 
+							qrisCheckStatusResponse.setAcceptorTID(flowVars.qrisGWGenerator.getAcceptorTID());
+							qrisCheckStatusResponse.setTransactionCurrency(flowVars.qrisGWGenerator.getTransactionCurrency());
+							qrisCheckStatusResponse.setPercentageTip(flowVars.qrisGWGenerator.isPercentageTip());
+							qrisCheckStatusResponse.setAmount(flowVars.qrisGWGenerator.getAmount());
+							qrisCheckStatusResponse.setConvenienceFee(flowVars.qrisGWGenerator.getConvenienceFee());
+							qrisCheckStatusResponse.setTotalAmount(flowVars.totalAmount);
+							qrisCheckStatusResponse.setTraceNumber(flowVars.qrisGWGenerator.getTraceNumber());
+							qrisCheckStatusResponse.setReferenceNumber(flowVars.referenceNumber);
+							
+							flowVars.responseMap['qrisCheckStatusResponse'] = qrisCheckStatusResponse;
+								
+							payload = flowVars.responseMap;]]>
+						</expression-component>
+						<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus(flowVars.transactionState);
+					payload = flowVars.responseMap;]]>
+				</expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="qrisCreditCallbackFlow">
+		<set-variable variableName="callbackUrl" value="#[org.apache.commons.lang.StringEscapeUtils.escapeHtml(flowVars.originalPayload['callbackUrl'])]" doc:name="Variable"/>
+		<set-variable variableName="qrisCreditResponse" value="#[flowVars.qrisCreditResponse]" doc:name="Variable"/>
+		<set-variable variableName="status" value="PROCESSED" doc:name="Variable"/>
+		<parse-template location="QRISCreditRedirect.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<set-property propertyName="content-type" value="text/html"
+			doc:name="Property" />
+		<set-variable variableName="logMessage" value="(QRIS CREDIT CONFIRMATION) CALLBACK : #[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+		<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>	
+	</sub-flow>
+	
+	<sub-flow name="qrisNotificationOnSuccessFlow">
+		<set-variable variableName="notificationSubject" value="#['Fello Merchant Receipt (QRIS)']" doc:name="Variable"/>
+		<set-variable variableName="merchantEmail" value="#[flowVars.qrisGWGenerator.getMerchantEmail()]" doc:name="Variable"/>
+		<set-variable variableName="merchantCallbackUrl" value="#[flowVars.qrisGWGenerator.getNotificationUrl()]" doc:name="Variable"/>
+		<set-variable variableName="qrisMpan" value="#[flowVars.qrisGWGenerator.getMerchantPAN(false)]" doc:name="Variable"/>
+		<set-variable variableName="qrisTransactionDateStr" value="#[org.equinox.api.utils.DateUtil.getDateTimeWithTimeZone(flowVars.transactionDate)]" doc:name="Variable"/>
+		<set-variable variableName="qrisTotalAmountStr" value="#[org.equinox.api.utils.CurrencyUtil.getIDRFormat(flowVars.totalAmount)]" doc:name="Variable"/>
+		
+		<expression-component doc:name="Expression"><![CDATA[
+			if (flowVars.qrisInvoiceId == null) {
+				flowVars.qrisInvoiceId = '-';
+			}
+			
+			messageBody = org.equinox.api.utils.MessageUtil.getQRISMerchantReceipt(
+				flowVars.acceptedLanguage,
+				flowVars.qrisMpan,
+				flowVars.qrisGWGenerator.getMerchantID(),
+				flowVars.qrisGWGenerator.getMerchantName(),
+				flowVars.qrisTransactionDateStr,
+				flowVars.doPaymentResponse.getTransactionNumber(),
+				flowVars.traceNumber,
+				flowVars.qrisGWGenerator.getRrn(),
+				flowVars.qrisInvoiceId,
+				flowVars.qrisTotalAmountStr
+			);
+			
+			bltrxRequest = new org.equinox.api.bellatrix.message.SendMessageRequest();
+			bltrxRequest.setFromUsername(flowVars.fromMember);
+			bltrxRequest.setToUsername(flowVars.qrisGWGenerator.getMerchantID());
+			bltrxRequest.setSubject(flowVars.notificationSubject);
+			bltrxRequest.setBody(messageBody);
+			
+			payload = bltrxRequest;]]>
+		</expression-component>
+		<flow-ref name="bltrxSendMessageFlow" doc:name="Flow Reference"/>
+		
+		<choice doc:name="Choice">
+			<when expression="#[org.apache.commons.lang.StringUtils.isBlank(flowVars.merchantCallbackUrl) == false]">
+				<expression-component doc:name="Expression"><![CDATA[
+					callbackMap = new java.util.HashMap();
+					callbackMap['context'] = flowVars.context;
+					callbackMap['callbackURL'] = flowVars.merchantCallbackUrl;
+					callbackMap['statusResponseCode'] = flowVars.doPaymentResponse.getStatus().getResponseCode();
+					callbackMap['statusMessage'] = flowVars.doPaymentResponse.getStatus().getMessage();
+					callbackMap['statusDescription'] = flowVars.doPaymentResponse.getStatus().getDescription();
+					
+					callbackMap['mpan'] = flowVars.qrisMpan;
+					callbackMap['mid'] = flowVars.qrisGWGenerator.getMerchantID();
+					callbackMap['merchantName'] = flowVars.qrisGWGenerator.getMerchantName();
+					callbackMap['transactionDate'] = flowVars.qrisTransactionDateStr;
+					callbackMap['transactionNumber'] = flowVars.doPaymentResponse.getTransactionNumber();
+					callbackMap['traceNumber'] = flowVars.traceNumber;
+					callbackMap['rrn'] = flowVars.qrisGWGenerator.getRrn();
+					callbackMap['invoiceId'] = flowVars.qrisInvoiceId;
+					callbackMap['amount'] = flowVars.totalAmount.toPlainString();
+					
+					payload = callbackMap;]]>
+		        </expression-component>
+				<vm:outbound-endpoint exchange-pattern="one-way" path="send.url.notification" connector-ref="Notification_VM" doc:name="VM"/>
+			</when>
+			<when expression="#[org.apache.commons.lang.StringUtils.isBlank(flowVars.merchantEmail) == false]">
+				<expression-component doc:name="Expression"><![CDATA[
+					emailContent = new java.util.HashMap();
+					emailContent['mpan'] = flowVars.qrisMpan;
+					emailContent['mid'] = flowVars.qrisGWGenerator.getMerchantID();
+					emailContent['merchantName'] = flowVars.qrisGWGenerator.getMerchantName();
+					emailContent['transactionDate'] = flowVars.qrisTransactionDateStr;
+					emailContent['transactionNumber'] = flowVars.doPaymentResponse.getTransactionNumber();
+					emailContent['traceNumber'] = flowVars.traceNumber;
+					emailContent['rrn'] = flowVars.qrisGWGenerator.getRrn();
+					emailContent['invoiceId'] = flowVars.qrisInvoiceId;
+					emailContent['amount'] = flowVars.qrisTotalAmountStr;
+					emailContent['copyRightYear'] = org.equinox.api.utils.DateUtil.getCurrentYear();
+					payload = emailContent;]]>
+				</expression-component>
+				
+				<choice doc:name="Choice">
+					<when expression="#[flowVars.acceptedLanguage == 'en-US']">
+						<parse-template location="${app.home}/classes/emails/qrisMerchantReceipt.html" doc:name="Parse Template"/>
+					</when>
+					<otherwise>
+						<parse-template location="${app.home}/classes/emails/qrisMerchantReceipt(ID).html" doc:name="Parse Template"/>
+					</otherwise>
+				</choice>
+				
+				<expression-component doc:name="Expression"><![CDATA[
+					emailMap = new java.util.HashMap();
+					emailMap['context'] = flowVars.context;
+					emailMap['email'] = flowVars.merchantEmail;
+					emailMap['subject'] = flowVars.notificationSubject;
+					emailMap['content'] = payload;
+					payload = emailMap;]]></expression-component>
+				<vm:outbound-endpoint exchange-pattern="one-way" path="send.email.notification" connector-ref="Notification_VM" doc:name="VM"/>
+			</when>
+			<otherwise>
+				<set-variable variableName="logMessage" value="Callback URL and Email not available, abort calling callback url/sending email" doc:name="Variable"/>
+				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="qrisNotificationOnErrorFlow">
+		<set-variable variableName="merchantCallbackUrl" value="#[flowVars.qrisGWGenerator.getNotificationUrl()]" doc:name="Variable"/>
+		
+		<choice doc:name="Choice">
+			<when expression="#[org.apache.commons.lang.StringUtils.isBlank(flowVars.merchantCallbackUrl) == false]">
+				<expression-component doc:name="Expression"><![CDATA[
+					if (flowVars.qrisInvoiceId == null) {
+						flowVars.qrisInvoiceId = '-';
+					}
+					
+					callbackBody = new java.util.HashMap();
+					callbackBody['status'] = flowVars.doPaymentResponse.getStatus();
+					
+					callbackMap = new java.util.HashMap();
+					callbackMap['context'] = flowVars.context;
+					callbackMap['callbackURL'] = flowVars.merchantCallbackUrl;
+					callbackMap['statusResponseCode'] = flowVars.doPaymentResponse.getStatus().getResponseCode();
+					callbackMap['statusMessage'] = flowVars.doPaymentResponse.getStatus().getMessage();
+					callbackMap['statusDescription'] = flowVars.doPaymentResponse.getStatus().getDescription();
+					
+					callbackMap['mid'] = flowVars.qrisGWGenerator.getMerchantID();
+					callbackMap['invoiceId'] = flowVars.qrisInvoiceId;
+					
+					payload = callbackMap;]]>
+		        </expression-component>
+				<vm:outbound-endpoint exchange-pattern="one-way" path="send.url.notification" connector-ref="Notification_VM" doc:name="VM"/>
+			</when>
+			<otherwise>
+				<set-variable variableName="logMessage" value="Callback url not available, abort calling url" doc:name="Variable"/>
+				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+</mule>

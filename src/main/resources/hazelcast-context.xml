@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:hz="http://www.hazelcast.com/schema/spring"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                http://www.springframework.org/schema/beans/spring-beans.xsd
+                http://www.hazelcast.com/schema/spring
+                http://www.hazelcast.com/schema/spring/hazelcast-spring-3.11.xsd">
+
+	<hz:hazelcast id="Instance">
+		<hz:config>
+			<hz:group name="equinox" password="b1zd3v" />
+			<hz:network port="5717" port-auto-increment="false">
+				<hz:join>
+					<hz:multicast enabled="true" multicast-group="224.2.2.5"
+						multicast-port="54327" />
+				</hz:join>
+			</hz:network>
+			<hz:map name="RegisterRequestMap" read-backup-data="true"
+				time-to-live-seconds="3600">
+			</hz:map>
+			<hz:map name="CredentialTokenMap" read-backup-data="true"
+				time-to-live-seconds="259200">
+			</hz:map>
+			<hz:map name="SubscribeTokenMap" read-backup-data="true"
+				time-to-live-seconds="259200">
+			</hz:map>
+			<hz:map name="RegisterAccountMap" read-backup-data="true"
+				time-to-live-seconds="3600">
+			</hz:map>
+			<hz:map name="GlobalConfigMap" read-backup-data="true">
+			</hz:map>
+			<hz:map name="VerifyEmailRequestMap" read-backup-data="true"
+				time-to-live-seconds="3600">
+			</hz:map>
+			<hz:map name="OTPRequestMap" read-backup-data="true"
+				time-to-live-seconds="3600">
+			</hz:map>
+			<hz:map name="TokenMap" read-backup-data="true"
+				time-to-live-seconds="86400">
+			</hz:map>
+			<hz:map name="RegisterOTPMap" read-backup-data="true"
+				time-to-live-seconds="3600">
+			</hz:map>
+			<hz:map name="PurchaseOTPMap" read-backup-data="true"
+				time-to-live-seconds="3600">
+			</hz:map>
+			<hz:map name="qrisInquiryMap" read-backup-data="true">
+			</hz:map>
+			<hz:map name="qrisCreditMap" read-backup-data="true">
+			</hz:map>
+			<hz:map name="qrisInvoiceMap" read-backup-data="true">
+			</hz:map>
+		</hz:config>
+	</hz:hazelcast>
+
+</beans>

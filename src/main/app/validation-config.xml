@@ -59,7 +59,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<choice>
 					<when expression="#[payload == null]">
@@ -108,7 +108,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 							payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
-							<spring-object bean="CacheProcessor" />
+							<spring-object bean="HazelcastStore" />
 						</pooled-component>
 					</when>
 					<otherwise>
@@ -293,7 +293,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 									payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
-							<spring-object bean="CacheProcessor" />
+							<spring-object bean="HazelcastStore" />
 						</pooled-component>
 						<choice>
 							<when expression="#[payload == null]">
@@ -342,7 +342,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 											payload = regMap;]]>
 								</expression-component>
 								<pooled-component>
-									<spring-object bean="CacheProcessor" />
+									<spring-object bean="HazelcastStore" />
 								</pooled-component>
 							</when>
 							<otherwise>

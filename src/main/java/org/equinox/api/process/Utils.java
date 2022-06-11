@@ -19,7 +19,6 @@ import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.log4j.Logger;
-import org.equinox.api.qris.Constants;
 
 public abstract class Utils {
 	private static Logger logger = Logger.getLogger(Utils.class);
@@ -108,68 +107,6 @@ public abstract class Utils {
 		if (email == null)
 			return false;
 		return pattern.matcher(email).matches();
-	}
-
-	public static String generateTraceNumber(String trxName, String stan) {
-		StringBuilder sb = new StringBuilder();
-
-		switch (trxName) {
-		case Constants.TRX_TRANSFER_MEMBER:
-			sb.append("1001");
-			break;
-		case Constants.TRX_BANK_TRANSFER:
-			sb.append("1002");
-			break;
-		case Constants.TRX_NAROBIL:
-			sb.append("1003");
-			break;
-		case Constants.TRX_TELCO_PREPAID:
-			sb.append("1101");
-			break;
-		case Constants.TRX_TELCO_POSTPAID:
-			sb.append("1102");
-			break;
-		case Constants.TRX_PLN_PREPAID:
-			sb.append("1201");
-			break;
-		case Constants.TRX_PLN_POSTPAID:
-			sb.append("1202");
-			break;
-		case Constants.TRX_PLN_NONTAGLIS:
-			sb.append("1203");
-			break;
-		case Constants.TRX_PDAM:
-			sb.append("1301");
-			break;
-		case Constants.TRX_BPJS:
-			sb.append("1401");
-			break;
-		case Constants.TRX_QRIS:
-			sb.append("1501");
-			break;
-		default:
-			sb.append("1000");
-			break;
-		}
-
-		sb.append("19");
-		sb.append(System.currentTimeMillis());
-
-		if (StringUtils.isBlank(stan)) {
-			Random r = new Random();
-			int lrand = r.nextInt(1000000);
-			String rand = String.valueOf(lrand);
-			int size = 6;
-			if (rand.length() == 1) {
-				sb.append(StringUtils.rightPad(rand, size, '0'));
-			} else {
-				sb.append(StringUtils.leftPad(rand, size, '0'));
-			}
-		} else {
-			sb.append(stan);
-		}
-
-		return sb.toString();
 	}
 
 	// format yyyy-MM-dd HH:mm:ss GMT+07:00 (e.g. 2021-09-13 14:21:08 GMT+07:00)

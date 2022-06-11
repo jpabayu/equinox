@@ -2,8 +2,8 @@ package org.equinox.api.process;
 
 import java.util.TreeMap;
 
-import org.equinox.api.qrcode.DefaultCrcCalculator;
-import org.equinox.api.qrcode.QRDecomposer;
+import org.equinox.api.qris.DefaultCrcCalculator;
+import org.equinox.api.qris.QRDecomposer;
 import org.mule.api.MuleEventContext;
 import org.mule.api.lifecycle.Callable;
 

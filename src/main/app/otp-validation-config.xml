@@ -68,7 +68,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			payload = regMap;]]>
 		</expression-component>
 		<pooled-component>
-			<spring-object bean="CacheProcessor" />
+			<spring-object bean="HazelcastStore" />
 		</pooled-component>
 
 		<choice>

@@ -143,5 +143,11 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 			connector-ref="GrayLogUDP" host="192.168.77.127" port="12205"
 			doc:name="UDP" />
 	</flow>
+	
+	<sub-flow name="logInfoFlow">
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.context.logInfo(flowVars.logMessage.toString());]]>
+		</expression-component>
+	</sub-flow>
 
 </mule>

@@ -46,7 +46,7 @@ http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/ht
 			payload = regMap;]]>
 		</expression-component>
 		<pooled-component>
-			<spring-object bean="CacheProcessor" />
+			<spring-object bean="HazelcastStore" />
 		</pooled-component>
 		<choice>
 			<when expression="#[payload == null]">
@@ -94,7 +94,7 @@ http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/ht
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<expression-component doc:name="Expression">
 					<![CDATA[
@@ -105,7 +105,7 @@ http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/ht
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<set-variable variableName="globalConfig" value="#[payload]"
 					doc:name="Variable" />

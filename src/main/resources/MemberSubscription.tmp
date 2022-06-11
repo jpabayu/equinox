@@ -355,7 +355,13 @@
     </style>
 
     <style>
-      body {
+	.header-icon {
+		width: 15%;
+		margin: 22px 0px 0px 22px;
+		text-align: left;
+	 }	
+	
+	body {
         font-family: 'Roboto', sans-serif;
         font-size: 16px;
         font-weight: 300;
@@ -466,7 +472,7 @@
       }
 
       .inner-bg {
-        padding: 100px 0 170px 0;
+        padding: 10px 0 170px 0;
       }
 
       .top-content .text {
@@ -558,28 +564,41 @@
       @media (min-width: 768px) and (max-width: 991px) {}
 
       @media (max-width: 767px) {
-        .inner-bg { padding: 60px 0 110px 0; }
+        .inner-bg { padding: 10px 0 110px 0; }
+		
+		.header-icon {
+			width: 30%;
+		 }
       }
 
       @media (max-width: 415px) {
         h1, h2 { font-size: 32px; }
+		
+		.header-icon {
+			width: 40%;
+		 }
       }
 
     </style>
   </head>
   <body>
     <div class="top-content">
+	  <div class="header-icon">
+			<a href="https://fello.id/">
+				<img src="https://fello.id/assets/img/logo/logo-fello.png" class="logo-fello">
+			</a>
+	  </div>
       <div class="inner-bg">
         <div class="container">
           <div class="row">
             <div class="col-sm-6 col-sm-offset-3 form-box">
               <div>
-                <h1 style="margin:0; mso-line-height-rule:exactly;">Login to OPTIMA</h1>
+                <h1 style="margin:0; mso-line-height-rule:exactly;">Login to FELLO</h1>
                 <p><h3 style="margin:0; mso-line-height-rule:exactly;"><font size="2" color="gray">Please enter your FELLO Username and PIN below</font></h3></p>
               <hr />
             </div>
             <div class="form-bottom">
-              <form role="form" action="MemberSubscriptionOTP" method="post" class="login-form">
+              <form role="form" action="#[flowVars.parentUrl]/MemberSubscriptionOTP" method="post" class="login-form">
                 <div class="form-group">
                 	  <center><span style="border:none; box-shadow: none; font-size: 12; color:red;">#[flowVars.status]</span></center>
                   <label class="sr-only" for="form-username">Username</label>
@@ -597,6 +616,13 @@
         </div>
 
         <div class="row">
+			<h3 style="margin:0; mso-line-height-rule:exactly;">
+				<font size="2" color="gray">
+					Copyright &#169; 
+					<script>document.write(new Date().getFullYear())</script>
+					Jatelindo Perkasa Abadi
+				</font>
+			</h3>
         </div>
       </div>
     </div>
@@ -674,18 +700,18 @@
                                  	var h=this.width||a(f.target).width();
                                      f=this.height||a(f.target).height();
                                      a(this).data("ratio",h/f);
-                                                                                                           a(this).fadeIn(b.options.speed||b.options.fade,function(){e.remove();
-                                                                                                           b.paused||b.cycle();
-                                                                                                           a(["after","show"]).each(function(){b.$container.trigger(a.Event("backstretch."+this,d),[b,c])})});
-                                                                                                           b.resize()}).appendTo(b.$wrap);
-                                                                                                           b.$img.attr("src",b.images[c]);
-                                                                                                           return b}},next:function(){return this.show(this.index<this.images.length-1?this.index+1:0)},prev:function(){return this.show(0===this.index?this.images.length-1:this.index-1)},pause:function(){this.paused=!0;return this},resume:function(){this.paused=!1;
-                                                                                                           this.next();
-                                                                                                           return this},cycle:function(){1<this.images.length&&(clearInterval(this.interval),this.interval=setInterval(a.proxy(function(){this.paused||this.next()},this),this.options.duration));
-                                                                                                                                         return this},destroy:function(c){a(d).off("resize.backstretch orientationchange.backstretch");
-                                                                                                                                         clearInterval(this.interval);
-                                                                                                                                         c||this.$wrap.remove();
-                                                                                                                                         this.$container.removeData("backstretch")}};
+									   a(this).fadeIn(b.options.speed||b.options.fade,function(){e.remove();
+									   b.paused||b.cycle();
+									   a(["after","show"]).each(function(){b.$container.trigger(a.Event("backstretch."+this,d),[b,c])})});
+									   b.resize()}).appendTo(b.$wrap);
+									   b.$img.attr("src",b.images[c]);
+									   return b}},next:function(){return this.show(this.index<this.images.length-1?this.index+1:0)},prev:function(){return this.show(0===this.index?this.images.length-1:this.index-1)},pause:function(){this.paused=!0;return this},resume:function(){this.paused=!1;
+									   this.next();
+									   return this},cycle:function(){1<this.images.length&&(clearInterval(this.interval),this.interval=setInterval(a.proxy(function(){this.paused||this.next()},this),this.options.duration));
+																	 return this},destroy:function(c){a(d).off("resize.backstretch orientationchange.backstretch");
+																	 clearInterval(this.interval);
+																	 c||this.$wrap.remove();
+																	 this.$container.removeData("backstretch")}};
                      var l,f=navigator.userAgent,m=navigator.platform,e=f.match(/AppleWebKit\/([0-9]+)/),e=!!e&&e[1],h=f.match(/Fennec\/([0-9]+)/),h=!!h&&h[1],n=f.match(/Opera Mobi\/([0-9]+)/),t=!!n&&n[1],k=f.match(/MSIE ([0-9]+)/),k=!!k&&k[1];l=!((-1<m.indexOf("iPhone")||-1<m.indexOf("iPad")||-1<m.indexOf("iPod"))&&e&&534>e||d.operamini&&"[object OperaMini]"==={}.toString.call(d.operamini)||n&&7458>t||-1<f.indexOf("Android")&&e&&533>e||h&&6>h||"palmGetResource"in d&&e&&534>e||-1<f.indexOf("MeeGo")&&-1<f.indexOf("NokiaBrowser/8.5.0")||k&&6>=k)})(jQuery,window);
 
   </script>

@@ -186,7 +186,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 									payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
-							<spring-object bean="CacheProcessor" />
+							<spring-object bean="HazelcastStore" />
 						</pooled-component>
 						<parse-template location="MemberPurchaseOTP.tmp"
 							mimeType="text/html" doc:name="Parse Template" />
@@ -219,7 +219,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 									payload = regMap;]]>
 						</expression-component>
 						<pooled-component>
-							<spring-object bean="CacheProcessor" />
+							<spring-object bean="HazelcastStore" />
 						</pooled-component>
 						<parse-template location="MemberPurchaseCredentials.tmp"
 							mimeType="text/html" doc:name="Parse Template" />
@@ -251,7 +251,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			payload = regMap;]]>
 		</expression-component>
 		<pooled-component>
-			<spring-object bean="CacheProcessor" />
+			<spring-object bean="HazelcastStore" />
 		</pooled-component>
 		<choice doc:name="Choice">
 			<when expression="#[payload == null]">
@@ -300,7 +300,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<expression-component doc:name="Expression">
 					<![CDATA[
@@ -311,7 +311,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 					payload = regMap;]]>
 				</expression-component>
 				<pooled-component>
-					<spring-object bean="CacheProcessor" />
+					<spring-object bean="HazelcastStore" />
 				</pooled-component>
 				<set-variable variableName="globalConfig" value="#[payload]"
 					doc:name="Variable" />

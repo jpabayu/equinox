@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+	<sub-flow name="bltrxDoInquiryFlow">
+		<flow-ref name="bltrxPostRequestWithLogFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="response" value="#[new org.equinox.api.bellatrix.payment.DoInquiryResponse()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.response.parseResponse(payload);
+			payload = flowVars.response;]]>
+		</expression-component>
+	</sub-flow>
+	
+	<sub-flow name="bltrxDoPaymentFlow">
+		<flow-ref name="bltrxPostRequestWithLogFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="response" value="#[new org.equinox.api.bellatrix.payment.DoPaymentResponse()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.response.parseResponse(payload);
+			payload = flowVars.response;]]>
+		</expression-component>
+	</sub-flow>
+	
+	<sub-flow name="bltrxReversePaymentFlow">
+		<flow-ref name="bltrxPostRequestWithLogFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="response" value="#[new org.equinox.api.bellatrix.payment.ReversePaymentResponse()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.response.parseResponse(payload);
+			payload = flowVars.response;]]>
+		</expression-component>
+	</sub-flow>
+	
+	<sub-flow name="bltrxUpdateTransferFlow">
+		<flow-ref name="bltrxPostRequestWithLogFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="response" value="#[new org.equinox.api.bellatrix.payment.UpdateTransferResponse()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.response.parseResponse(payload);
+			payload = flowVars.response;]]>
+		</expression-component>
+	</sub-flow>
+	
+	<sub-flow name="bltrxTransactionStatusFlow">
+		<flow-ref name="bltrxPostRequestFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="response" value="#[new org.equinox.api.bellatrix.payment.TransactionStatusResponse()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.response.parseResponse(payload);
+			payload = flowVars.response;]]>
+		</expression-component>
+	</sub-flow>
+	
+</mule>
