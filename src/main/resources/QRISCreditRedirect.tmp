@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Jatelindo Payment Page - Redirect</title>
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<!--[if lt IE 9]>
+<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>   
+</head>
+
+<body onload="document.formRedirect.submit();">
+	<div>
+		<form action="#[flowVars.callbackUrl]" method="POST" id="formRedirect" name="formRedirect">
+			<input type="hidden" id="status" name="status" value="#[flowVars.status]">
+			
+			<input type="hidden" id="acquirerDomain" name="acquirerDomain" value="#[flowVars.qrisCreditResponse.getAcquirerDomain()]">
+			<input type="hidden" id="merchantPAN" name="merchantPAN" value="#[flowVars.qrisCreditResponse.getMerchantPAN()]">
+			<input type="hidden" id="merchantID" name="merchantID" value="#[flowVars.qrisCreditResponse.getMerchantID()]">
+			<input type="hidden" id="merchantName" name="merchantName" value="#[flowVars.qrisCreditResponse.getMerchantName()]">
+			<input type="hidden" id="merchantCity" name="merchantCity" value="#[flowVars.qrisCreditResponse.getMerchantCity()]">
+			<input type="hidden" id="merchantCriteria" name="merchantCriteria" value="#[flowVars.qrisCreditResponse.getMerchantCriteria()]">
+			
+			<input type="hidden" id="merchantType" name="merchantType" value="#[flowVars.qrisCreditResponse.getMerchantType()]">
+			<input type="hidden" id="countryCode" name="countryCode" value="#[flowVars.qrisCreditResponse.getCountryCode()]">
+			<input type="hidden" id="postalCode" name="postalCode" value="#[flowVars.qrisCreditResponse.getPostalCode()]">
+			<input type="hidden" id="additionalData" name="additionalData" value="#[flowVars.qrisCreditResponse.getAdditionalData()]">
+			<input type="hidden" id="acceptorTID" name="acceptorTID" value="#[flowVars.qrisCreditResponse.getAcceptorTID()]">
+			<input type="hidden" id="percentageTip" name="percentageTip" value="#[flowVars.qrisCreditResponse.isPercentageTip()]">
+			
+			<input type="hidden" id="amount" name="amount" value="#[flowVars.qrisCreditResponse.getAmount()]">
+			<input type="hidden" id="convenienceFee" name="convenienceFee" value="#[flowVars.qrisCreditResponse.getConvenienceFee()]">
+			<input type="hidden" id="totalAmount" name="totalAmount" value="#[flowVars.qrisCreditResponse.getTotalAmount()]">
+			<input type="hidden" id="traceNumber" name="traceNumber" value="#[flowVars.qrisCreditResponse.getTraceNumber()]">
+			<input type="hidden" id="referenceNumber" name="referenceNumber" value="#[flowVars.qrisCreditResponse.getReferenceNumber()]">
+			
+			<input type="submit" id="btn">
+		</form>				
+	</div>		 
+</body>
+</html>

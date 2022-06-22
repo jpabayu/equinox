@@ -17,6 +17,7 @@ bin/**
 tmp/**
 tmp/**/*
 *.tmp
+!src/main/resources/*.tmp
 *.bak
 *.swp
 *~.nib
