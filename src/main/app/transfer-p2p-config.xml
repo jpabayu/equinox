@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+	<sub-flow name="transferP2PInquiryFlow">
+		<expression-component doc:name="Expression"><![CDATA[
+			request = new org.equinox.api.pojo.payment.TransferP2PInquiryRequest();
+			request.setToken(flowVars.originalPayload['token']);
+			request.setFromMember(flowVars.originalPayload['fromMember']);
+			request.setToMember(flowVars.originalPayload['toMember']);
+			request.setAmount(new java.math.BigDecimal(flowVars.originalPayload['amount']));
+			flowVars.originalPayload = request;]]>
+		</expression-component>
+		<set-payload value="#['INVALID_DESTINATION_PHONE_NUMBER']" doc:name="Set Payload"/>
+		<message-filter onUnaccepted="errorResponseFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[org.equinox.api.utils.CommonUtil.isValidPhoneNumber(flowVars.originalPayload.getToMember()) == true]" />
+				<expression-filter expression="#[org.apache.commons.lang.StringUtils.equalsIgnoreCase(flowVars.originalPayload.getFromMember(), flowVars.originalPayload.getToMember()) == false]" />
+			</and-filter>
+		</message-filter>
+		<expression-component doc:name="Expression"><![CDATA[
+			request = new org.equinox.api.bellatrix.payment.DoInquiryRequest();
+			request.setFromMember(flowVars.originalPayload.getFromMember());
+			request.setToMember(flowVars.originalPayload.getToMember());
+			request.setAmount(flowVars.originalPayload.getAmount());
+			request.setTransferTypeId(3);
+			payload = request;]]>
+		</expression-component>
+		<flow-ref name="bltrxDoInquiryFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="bltrxResponse" value="#[payload]" doc:name="Variable"/>
+		<set-variable variableName="status" value="#[flowVars.bltrxResponse.getStatus().getMessage()]" doc:name="Variable"/>
+		<choice doc:name="Choice">
+			<when expression="#[flowVars.status == 'DESTINATION_MEMBER_NOT_FOUND' || flowVars.status == 'INVALID_DESTINATION_ACCOUNT']">
+				<expression-component doc:name="Expression"><![CDATA[					
+					fromMember = new org.equinox.api.bellatrix.member.BaseMember();
+					fromMember.setName('');
+					fromMember.setUsername(flowVars.originalPayload.getFromMember());
+					
+					toMember = new org.equinox.api.bellatrix.member.BaseMember();
+					toMember.setName('NASABAH BARU');
+					toMember.setUsername(flowVars.originalPayload.getToMember());
+					
+					transferP2PInquiryResponse = new org.equinox.api.pojo.EmoneyInquiry();
+					transferP2PInquiryResponse.setFromMember(fromMember);
+					transferP2PInquiryResponse.setToMember(toMember);
+					transferP2PInquiryResponse.setTotalFees(new java.math.BigDecimal('0'));
+					transferP2PInquiryResponse.setTransactionAmount(new java.math.BigDecimal(flowVars.originalPayload.getAmount()));
+					transferP2PInquiryResponse.setFinalAmount(new java.math.BigDecimal(flowVars.originalPayload.getAmount()));
+					
+					responseMap = new java.util.HashMap();
+					responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+					responseMap['transferP2PInquiryResponse'] = transferP2PInquiryResponse;
+					
+					payload = responseMap;]]>
+				</expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+			</when>
+			<when expression="#[flowVars.status != 'PROCESSED']">
+				<expression-component doc:name="Expression"><![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus(flowVars.status);
+					payload = responseMap;]]></expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression"><![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('PROCESSED');
+					
+					fromMember = new org.equinox.api.bellatrix.member.BaseMember();
+					fromMember.setName(flowVars.bltrxResponse.getFromMember().getName());
+					fromMember.setUsername(flowVars.bltrxResponse.getFromMember().getUsername());
+					
+					toMember = new org.equinox.api.bellatrix.member.BaseMember();
+					toMember.setName(flowVars.bltrxResponse.getToMember().getName());
+					toMember.setUsername(flowVars.bltrxResponse.getToMember().getUsername());
+					
+					transferP2PInquiryResponse = new org.equinox.api.pojo.payment.TransferP2PInquiryResponse();
+					transferP2PInquiryResponse.setFromMember(fromMember);
+					transferP2PInquiryResponse.setToMember(toMember);
+					transferP2PInquiryResponse.setTotalFees(flowVars.bltrxResponse.getTotalFees());
+					transferP2PInquiryResponse.setTransactionAmount(flowVars.bltrxResponse.getTransactionAmount());
+					transferP2PInquiryResponse.setFinalAmount(flowVars.bltrxResponse.getFinalAmount());
+					responseMap['transferP2PInquiryResponse'] = transferP2PInquiryResponse;
+					
+					payload = responseMap;]]></expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="transferP2PPaymentFlow">
+		<expression-component doc:name="Expression"><![CDATA[
+			request = new org.equinox.api.pojo.payment.TransferP2PPaymentRequest();
+			request.setToken(flowVars.originalPayload['token']);
+			request.setCallbackURL(flowVars.originalPayload['callbackURL']);
+			request.setFromMember(flowVars.originalPayload['fromMember']);
+			request.setToMember(flowVars.originalPayload['toMember']);
+			request.setAmount(new java.math.BigDecimal(flowVars.originalPayload['amount']));
+			request.setTraceNumber(flowVars.originalPayload['traceNumber']);
+			flowVars.originalPayload = request;]]>
+		</expression-component>
+		<set-payload value="#['INVALID_DESTINATION_PHONE_NUMBER']" doc:name="Set Payload"/>
+		<message-filter onUnaccepted="errorResponseFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[org.equinox.api.utils.CommonUtil.isValidPhoneNumber(flowVars.originalPayload.getToMember()) == true]" />
+				<expression-filter expression="#[org.apache.commons.lang.StringUtils.equalsIgnoreCase(flowVars.originalPayload.getFromMember(), flowVars.originalPayload.getToMember()) == false]" />
+			</and-filter>
+		</message-filter>
+		<set-variable variableName="statusResponse" value="" doc:name="Variable"/>
+		<set-variable variableName="token" value="#[flowVars.originalPayload.getToken()]" doc:name="Variable"/>
+		<set-variable variableName="callbackURL" value="#[flowVars.originalPayload.getCallbackURL()]" doc:name="Variable"/>
+		<set-variable variableName="fromMember" value="#[flowVars.originalPayload.getFromMember()]" doc:name="Variable"/>
+		<set-variable variableName="toMember" value="#[flowVars.originalPayload.getToMember()]" doc:name="Variable"/>
+		<set-variable variableName="amount" value="#[flowVars.originalPayload.getAmount().toPlainString()]" doc:name="Variable"/>
+		<set-variable variableName="traceNumber" value="#[flowVars.originalPayload.getTraceNumber()]" doc:name="Variable"/>
+		<parse-template location="TransferP2PPaymentCredentials.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<set-property propertyName="content-type" value="text/html"
+			doc:name="Property" />
+	</sub-flow>
+	
+	<sub-flow name="transferP2PPaymentConfirmationFlow">
+		<expression-component doc:name="Expression"><![CDATA[
+			request = new org.equinox.api.pojo.payment.TransferP2PPaymentConfirmationRequest();
+			request.setToken(flowVars.originalPayload['token']);
+			request.setCallbackURL(flowVars.originalPayload['callbackURL']);
+			request.setFromMember(flowVars.originalPayload['fromMember']);
+			request.setToMember(flowVars.originalPayload['toMember']);
+			request.setAmount(new java.math.BigDecimal(flowVars.originalPayload['amount']));
+			request.setTraceNumber(flowVars.originalPayload['traceNumber']);
+			request.setCredential(flowVars.originalPayload['pin']);
+			flowVars.originalPayload = request;]]>
+		</expression-component>
+		<set-variable variableName="transferP2PPaymentResponse" value="#[new org.equinox.api.pojo.payment.TransferP2PPaymentConfirmationResponse()]" doc:name="Variable"/>
+		<set-payload value="#['INVALID_DESTINATION_PHONE_NUMBER']" doc:name="Set Payload"/>
+		<message-filter onUnaccepted="errorResponseFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[org.equinox.api.utils.CommonUtil.isValidPhoneNumber(flowVars.originalPayload.getToMember()) == true]" />
+				<expression-filter expression="#[org.apache.commons.lang.StringUtils.equalsIgnoreCase(flowVars.originalPayload.getFromMember(), flowVars.originalPayload.getToMember()) == false]" />
+			</and-filter>
+		</message-filter>
+		
+		<expression-component doc:name="Expression"><![CDATA[
+			request = new org.equinox.api.bellatrix.access.ValidateCredentialRequest();
+			request.setUsername(flowVars.originalPayload.getFromMember());
+			request.setAccessTypeId('${access.type.id.pin}');
+			request.setCredential(flowVars.originalPayload.getCredential());
+			
+			payload = request;]]>
+		</expression-component>
+		<flow-ref name="bltrxValidateCredentialFlow" doc:name="Flow Reference"/>
+		<set-payload value="#[payload.getStatus().getMessage()]" doc:name="Set Payload"/>
+		<choice doc:name="Choice">
+			<when expression="#[payload == 'VALID']">
+				<set-variable variableName="bltrxRequest" value="#[new org.equinox.api.bellatrix.payment.DoPaymentRequest()]" doc:name="Variable"/>
+				<expression-component doc:name="Expression"><![CDATA[
+					flowVars.bltrxRequest.setFromMember(flowVars.originalPayload.getFromMember());
+					flowVars.bltrxRequest.setToMember(flowVars.originalPayload.getToMember());
+					flowVars.bltrxRequest.setAmount(flowVars.originalPayload.getAmount());
+					flowVars.bltrxRequest.setTraceNumber(flowVars.originalPayload.getTraceNumber());
+					flowVars.bltrxRequest.setTransferTypeId(3);
+					payload = flowVars.bltrxRequest;]]>
+				</expression-component>
+				<flow-ref name="bltrxDoPaymentFlow" doc:name="Flow Reference"/>
+				<set-variable variableName="bltrxResponse" value="#[payload]" doc:name="Variable"/>
+				<set-variable variableName="status" value="#[flowVars.bltrxResponse.getStatus().getMessage()]" doc:name="Variable"/>
+				<choice doc:name="Choice">
+					<when expression="#[flowVars.status == 'DESTINATION_MEMBER_NOT_FOUND']">
+						<flow-ref name="preregisterMemberFlow" doc:name="Flow Reference"/>
+					</when>
+					<when expression="#[flowVars.status == 'INVALID_DESTINATION_ACCOUNT']">
+						<flow-ref name="preregisterMemberFlow" doc:name="Flow Reference"/>
+					</when>
+					<when expression="#[flowVars.status != 'PROCESSED']">
+						<set-payload value="#[flowVars.status]" doc:name="Set Payload"/>
+						<flow-ref name="htmlErrorResponseFlow" doc:name="Flow Reference"/>
+					</when>
+					<otherwise>
+						<expression-component doc:name="Expression"><![CDATA[
+							flowVars.transferP2PPaymentResponse.setAmount(flowVars.bltrxResponse.getAmount());
+							flowVars.transferP2PPaymentResponse.setDescription(flowVars.bltrxResponse.getDescription());
+							flowVars.transferP2PPaymentResponse.setFromMember(flowVars.bltrxResponse.getFromMember().getUsername());
+							flowVars.transferP2PPaymentResponse.setToMember(flowVars.bltrxResponse.getToMember().getUsername());
+							flowVars.transferP2PPaymentResponse.setTraceNumber(flowVars.bltrxResponse.getTraceNumber());
+							flowVars.transferP2PPaymentResponse.setTransactionNumber(flowVars.bltrxResponse.getTransactionNumber());
+							]]></expression-component>
+						<set-variable variableName="status" value="PROCESSED" doc:name="Variable"/>	
+						<flow-ref name="transferP2PPaymentCallbackFlow" doc:name="Flow Reference"/>
+					</otherwise>
+				</choice>
+			</when>
+			<when expression="#[payload == 'INVALID']">
+				<set-variable variableName="statusResponse" value="Incorrect PIN" doc:name="Variable"/>
+				<set-variable variableName="token" value="#[flowVars.originalPayload.getToken()]" doc:name="Variable"/>
+				<set-variable variableName="callbackURL" value="#[flowVars.originalPayload.getCallbackURL()]" doc:name="Variable"/>
+				<set-variable variableName="fromMember" value="#[flowVars.originalPayload.getFromMember()]" doc:name="Variable"/>
+				<set-variable variableName="toMember" value="#[flowVars.originalPayload.getToMember()]" doc:name="Variable"/>
+				<set-variable variableName="amount" value="#[flowVars.originalPayload.getAmount().toPlainString()]" doc:name="Variable"/>
+				<set-variable variableName="traceNumber" value="#[flowVars.originalPayload.getTraceNumber()]" doc:name="Variable"/>
+				<parse-template location="TransferP2PPaymentCredentials.tmp"
+					mimeType="text/html" doc:name="Parse Template" />
+				<set-property propertyName="content-type" value="text/html"
+					doc:name="Property" />	
+			</when>
+			<otherwise>
+				<flow-ref name="htmlErrorResponseFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="transferP2PPaymentCallbackFlow">
+		<set-variable variableName="callbackUrl" value="#[org.apache.commons.lang.StringEscapeUtils.escapeHtml(flowVars.originalPayload.getCallbackURL())]" doc:name="Variable"/>
+		<parse-template location="TransferP2PPaymentRedirect.tmp"
+			mimeType="text/html" doc:name="Parse Template" />
+		<set-property propertyName="content-type" value="text/html"
+			doc:name="Property" />
+		<set-variable variableName="logMessage" value="(TRANSFER P2P PAYMENT CONFIRMATION) CALLBACK : #[message.payloadAs(java.lang.String)]" doc:name="Variable"/>
+		<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>	
+	</sub-flow>
+	
+	<sub-flow name="preregisterMemberFlow">
+		<set-variable variableName="msisdn" value="#[org.equinox.api.utils.CommonUtil.standardizedMSISDN(flowVars.originalPayload.getToMember())]" doc:name="Variable"/>
+		<set-variable variableName="praregisteredId" value="${preregistered.group.id}" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			request = new org.equinox.api.bellatrix.member.RegisterMemberRequest();
+			request.setUsername(flowVars.originalPayload.getToMember());
+			request.setName('NASABAH BARU');
+			request.setMsisdn(flowVars.msisdn);
+			request.setGroupId(flowVars.praregisteredId);
+			
+			payload = request;]]>
+		</expression-component>
+		<flow-ref name="bltrxRegisterMemberFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="bltrxResponse" value="#[payload]" doc:name="Variable"/>
+		<set-payload value="#[flowVars.bltrxResponse.getStatus().getMessage()]" doc:name="Set Payload"/>
+		<message-filter onUnaccepted="htmlErrorResponseFlow" doc:name="Message">
+			<expression-filter expression="#[payload == 'PROCESSED']" />
+		</message-filter>
+		<set-payload value="#[flowVars.bltrxRequest]" doc:name="Set Payload"/>
+		<flow-ref name="bltrxDoPaymentFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="bltrxResponse" value="#[payload]" doc:name="Variable"/>
+		<set-payload value="#[flowVars.bltrxResponse.getStatus().getMessage()]" doc:name="Set Payload"/>
+		<message-filter onUnaccepted="htmlErrorResponseFlow" doc:name="Message">
+			<expression-filter expression="#[payload == 'PROCESSED']" />
+		</message-filter>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.transferP2PPaymentResponse.setAmount(flowVars.bltrxResponse.getAmount());
+			flowVars.transferP2PPaymentResponse.setDescription(flowVars.bltrxResponse.getDescription());
+			flowVars.transferP2PPaymentResponse.setFromMember(flowVars.bltrxResponse.getFromMember().getUsername());
+			flowVars.transferP2PPaymentResponse.setToMember(flowVars.bltrxResponse.getToMember().getUsername());
+			flowVars.transferP2PPaymentResponse.setTraceNumber(flowVars.bltrxResponse.getTraceNumber());
+			flowVars.transferP2PPaymentResponse.setTransactionNumber(flowVars.bltrxResponse.getTransactionNumber());
+			]]>
+		</expression-component>
+		<set-variable variableName="status" value="PROCESSED" doc:name="Variable"/>	
+		<flow-ref name="transferP2PPaymentCallbackFlow" doc:name="Flow Reference"/>
+	</sub-flow>
+	
+</mule>

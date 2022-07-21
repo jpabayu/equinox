@@ -42,13 +42,17 @@ public enum Key {
 
 	PREREGISTERED_GROUP_ID("preregistered.group.id"),
 	UNREGISTERED_GROUP_ID("unregistered.group.id"),
-
+	REGISTERED_GROUP_ID("registered.group.id"),
+	
 	//PPOB
 	MULTIBILLER_ISO_ACC_ID("multibiller.iso.acc.id"),
 	MULTIBILLER_ISO_TID("multibiller.iso.tid"),
 	
 	PLN_ISO_ACC_ID("pln.iso.acc.id"),
 	PLN_ISO_TID("pln.iso.tid"),
+	
+	//Transfer Type
+	P2P_TRANSFER_TYPE_ID("p2p.transfer.type.id"),
 	
 	//QRIS
 	NNS_JPA("nns.jpa"),

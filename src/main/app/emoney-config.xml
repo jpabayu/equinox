@@ -777,4 +777,51 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		<exception-strategy ref="sessionException"
 			doc:name="Reference Exception Strategy" />
 	</flow>
+	
+	<flow name="transferP2PChannelFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration"
+			path="Emoney/TransferP2P/{action}" allowedMethods="POST" doc:name="HTTP">
+		</http:listener>
+		<message-filter doc:name="Filter favicon">
+			<not-filter>
+				<wildcard-filter pattern="/favicon.ico"
+					caseSensitive="true" />
+			</not-filter>
+		</message-filter>
+		<set-variable value="#[message.inboundProperties.'http.method']"
+			variableName="method" doc:name="Variable" />
+		<custom-transformer class="org.equinox.api.data.MessageTransformer"
+			doc:name="Java" />
+		<set-variable variableName="originalPayload" value="#[payload]" doc:name="Variable"/>	
+		<flow-ref name="contextInstanceFlow" doc:name="Flow Reference"/>
+		<set-variable variableName="action" value="#[message.inboundProperties.'http.uri.params'.action]" doc:name="Variable"/>
+		<set-variable variableName="trxType" value="#['transferP2P'+flowVars.action]" doc:name="Variable"/>
+		<set-variable variableName="correlationID" value="#[flowVars.context.getCorrelationID()]" doc:name="Variable"/>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.context.setTransactionType(flowVars.trxType);]]>
+		</expression-component>
+		<set-variable variableName="parentUrl" value="${app.base.url}/Emoney/TransferP2P" doc:name="Variable" />
+		<set-variable variableName="logMessage" value="Request: #[flowVars.originalPayload]" doc:name="Variable"/>
+		<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+		<set-payload value="#[flowVars.originalPayload]" doc:name="Set Payload" />
+		<choice doc:name="Choice">
+			<when expression="#[flowVars.action == 'Inquiry']">
+				<flow-ref name="transferP2PInquiryValidationFlow" doc:name="Flow Reference"/>
+			</when>
+			<when expression="#[flowVars.action == 'Payment']">
+				<flow-ref name="transferP2PPaymentValidationFlow" doc:name="Flow Reference"/>
+			</when>
+			<when expression="#[flowVars.action == 'PaymentConfirmation']">
+				<flow-ref name="transferP2PPaymentConfirmationValidationFlow" doc:name="Flow Reference"/>
+			</when>
+			<otherwise>
+				<expression-component doc:name="Expression"><![CDATA[
+					responseMap = new java.util.HashMap();
+					responseMap['status'] = org.equinox.api.data.StatusBuilder.getStatus('SERVICE_NOT_FOUND');
+					payload = responseMap;]]></expression-component>
+				<flow-ref name="responseHandlerFlow" doc:name="Flow Reference"/>
+			</otherwise>
+		</choice>
+		<exception-strategy ref="sessionException" doc:name="Reference Exception Strategy"/>
+	</flow>
 </mule>

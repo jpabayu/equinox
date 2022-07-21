@@ -5,18 +5,19 @@ import java.io.Serializable;
 public class BaseMember implements Serializable {
 	
 	private static final long serialVersionUID = 1992806955692419031L;
-	protected long id;
+	
+	protected Integer id;
 	protected String name;
 	protected String username;
 	
-	public long getId() {
+	public Integer getId() {
 		return id;
 	}
-	
-	public void setId(long id) {
+
+	public void setId(Integer id) {
 		this.id = id;
 	}
-	
+
 	public String getName() {
 		return name;
 	}

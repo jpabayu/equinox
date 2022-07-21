@@ -974,4 +974,167 @@ http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/cu
 		</choice>
 	</flow>
 	
+	<sub-flow name="transferP2PInquiryValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+				<expression-filter expression="#[originalPayload['fromMember'] != null]" />
+				<expression-filter expression="#[originalPayload['toMember'] != null]" />
+				<expression-filter expression="#[originalPayload['amount'] != null]" />
+			</and-filter>
+		</message-filter>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.originalPayload['fromMember'] = org.equinox.api.utils.CommonUtil.standardizedUsername(flowVars.originalPayload['fromMember']);
+			flowVars.originalPayload['toMember'] = org.equinox.api.utils.CommonUtil.standardizedUsername(flowVars.originalPayload['toMember']);]]>
+		</expression-component>
+		<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="errorResponseFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<flow-ref name="accessValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="errorResponseFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<choice doc:name="Choice">
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice doc:name="Choice">
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload['requestAuth'])]">
+						<flow-ref name="hashValidation" doc:name="Flow Reference" />
+						<message-filter onUnaccepted="errorResponseFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+						<flow-ref name="transferP2PInquiryFlow" doc:name="Flow Reference" />
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" doc:name="Flow Reference" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<set-variable variableName="logMessage" value="SKIP HASH Validation" doc:name="Variable"/>
+				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+				<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+				<flow-ref name="transferP2PInquiryFlow" doc:name="Flow Reference" />
+			</otherwise>
+		</choice>
+	</sub-flow>
+
+	<sub-flow name="transferP2PPaymentValidationFlow">
+		<message-filter onUnaccepted="invalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['token'] != null]" />
+				<expression-filter expression="#[originalPayload['callbackURL'] != null]" />
+				<expression-filter expression="#[originalPayload['fromMember'] != null]" />
+				<expression-filter expression="#[originalPayload['toMember'] != null]" />
+				<expression-filter expression="#[originalPayload['amount'] != null]" />
+				<expression-filter expression="#[originalPayload['traceNumber'] != null]" />
+			</and-filter>
+		</message-filter>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.originalPayload['fromMember'] = org.equinox.api.utils.CommonUtil.standardizedUsername(flowVars.originalPayload['fromMember']);
+			flowVars.originalPayload['toMember'] = org.equinox.api.utils.CommonUtil.standardizedUsername(flowVars.originalPayload['toMember']);]]>
+		</expression-component>
+		<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="errorResponseFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<flow-ref name="accessValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="errorResponseFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<choice doc:name="Choice">
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice doc:name="Choice">
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload['requestAuth'])]">
+						<flow-ref name="hashValidation" doc:name="Flow Reference" />
+						<message-filter onUnaccepted="errorResponseFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+						<flow-ref name="transferP2PPaymentFlow" doc:name="Flow Reference" />
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" doc:name="Flow Reference" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<set-variable variableName="logMessage" value="SKIP HASH Validation" doc:name="Variable"/>
+				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+				<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+				<flow-ref name="transferP2PPaymentFlow" doc:name="Flow Reference" />
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
+	<sub-flow name="transferP2PPaymentConfirmationValidationFlow">
+		<message-filter onUnaccepted="htmlInvalidParameterFlow"
+			doc:name="Message">
+			<and-filter doc:name="And">
+				<expression-filter expression="#[originalPayload['form-token'] != null]" />
+				<expression-filter expression="#[originalPayload['form-callbackURL'] != null]" />
+				<expression-filter expression="#[originalPayload['form-fromMember'] != null]" />
+				<expression-filter expression="#[originalPayload['form-toMember'] != null]" />
+				<expression-filter expression="#[originalPayload['form-amount'] != null]" />
+				<expression-filter expression="#[originalPayload['form-traceNumber'] != null]" />
+				<expression-filter expression="#[originalPayload['form-pin'] != null]" />
+			</and-filter>
+		</message-filter>
+		<expression-component doc:name="Expression"><![CDATA[
+			flowVars.originalPayload['token'] = flowVars.originalPayload.remove('form-token');
+			flowVars.originalPayload['callbackURL'] = flowVars.originalPayload.remove('form-callbackURL');
+			flowVars.originalPayload['fromMember'] = flowVars.originalPayload.remove('form-fromMember');
+			flowVars.originalPayload['toMember'] = flowVars.originalPayload.remove('form-toMember');
+			flowVars.originalPayload['amount'] = flowVars.originalPayload.remove('form-amount');
+			flowVars.originalPayload['traceNumber'] = flowVars.originalPayload.remove('form-traceNumber');
+			flowVars.originalPayload['pin'] = flowVars.originalPayload.remove('form-pin');]]>
+		</expression-component>
+		<flow-ref name="tokenValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="htmlErrorResponseFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<flow-ref name="accessValidation" doc:name="Flow Reference" />
+		<message-filter onUnaccepted="errorResponseFlow"
+			doc:name="Message">
+			<expression-filter expression="#[payload == 'ALLOWED']" />
+		</message-filter>
+		<choice doc:name="Choice">
+			<when expression="#[originalPayload['validateHash'] == true]">
+				<choice doc:name="Choice">
+					<when
+						expression="#[org.mule.util.StringUtils.isNotEmpty(originalPayload['requestAuth'])]">
+						<flow-ref name="hashValidation" doc:name="Flow Reference" />
+						<message-filter onUnaccepted="errorResponseFlow"
+							doc:name="Message">
+							<expression-filter expression="#[payload == 'ALLOWED']" />
+						</message-filter>
+						<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+						<flow-ref name="transferP2PPaymentConfirmationFlow" doc:name="Flow Reference" />
+					</when>
+					<otherwise>
+						<flow-ref name="invalidParameterFlow" doc:name="Flow Reference" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<set-variable variableName="logMessage" value="SKIP HASH Validation" doc:name="Variable"/>
+				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
+				<set-payload value="#[originalPayload]" doc:name="Set Payload" />
+				<flow-ref name="transferP2PPaymentConfirmationFlow" doc:name="Flow Reference" />
+			</otherwise>
+		</choice>
+	</sub-flow>
+	
 </mule>

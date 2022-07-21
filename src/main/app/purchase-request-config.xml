@@ -17,12 +17,12 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 		<set-variable variableName="tokennc" value="${api.ws.header.token.nc}"
 			doc:name="Variable" />
 		<logger message="[tft type id 0 : #[originalPayload['transferTypeID']]]" level="INFO" doc:name="Logger" />
-		<choice>
+		<choice doc:name="Choice">
 			<when expression="#[originalPayload['transferTypeID'] == '0']">
-				<choice>
+				<choice doc:name="Choice">
 					<when expression="#[originalPayload['terminalID'] == '0']">
 						<set-variable value="#[globalConfig['default.charge.trx.id']]"
-							variableName="transferTypeID" />
+							variableName="transferTypeID" doc:name="Variable"/>
 						<logger message="[tft type id 1 : #[flowVars['transferTypeID']]]" level="INFO" doc:name="Logger" />
 					</when>
 					<otherwise>
@@ -59,15 +59,15 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 							level="INFO" doc:name="Logger" />
 						<set-variable value="#[xpath3('//status/message')]"
 							variableName="status" doc:name="Variable" />
-						<choice>
+						<choice doc:name="Choice">
 							<when expression="#[flowVars['status'] == 'PROCESSED']">
 								<set-variable value="#[xpath3('//terminal/transferTypeID')]"
-									variableName="transferTypeID" />
+									variableName="transferTypeID" doc:name="Variable"/>
 								<logger message="[tft type id 2 : #[flowVars['transferTypeID']]]" level="INFO" doc:name="Logger" />
 							</when>
 							<otherwise>
 								<set-variable value="#[globalConfig['default.charge.trx.id']]"
-									variableName="transferTypeID" />
+									variableName="transferTypeID" doc:name="Variable"/>
 								<logger message="[tft type id 3 : #[flowVars['transferTypeID']]]" level="INFO" doc:name="Logger" />
 							</otherwise>
 						</choice>
@@ -76,7 +76,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 			</when>
 			<otherwise>
 				<set-variable value="#[originalPayload['transferTypeID']]"
-					variableName="transferTypeID" />
+					variableName="transferTypeID" doc:name="Variable"/>
 				<logger message="[tft type id 4 : #[flowVars['transferTypeID']]]" level="INFO" doc:name="Logger" />
 			</otherwise>
 		</choice>
@@ -130,13 +130,19 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 		<choice doc:name="Choice">
 			<when expression="#[flowVars['status'] == 'PROCESSED']">
 				<flow-ref name="globalConfigFlow" doc:name="Flow Reference" />
-
+				
+				<set-variable value="#[new java.math.BigDecimal(flowVars['finalAmount'])]"
+					variableName="finalAmountBigDecimal" doc:name="Variable" />
+					
+				<set-variable value="#[new java.math.BigDecimal(globalConfig['two.factor.amount.treshold'])]"
+					variableName="otpAmountThreshold" doc:name="Variable" />	
+				
 				<logger level="INFO"
-					message="Two Factor Auth: #[globalConfig['two.factor.amount.treshold']]"
+					message="Two Factor Auth: #[flowVars.otpAmountThreshold.toPlainString()]"
 					doc:name="Logger" />
 				<choice doc:name="Choice">
 					<when
-						expression="#[flowVars['finalAmount'] >= globalConfig['two.factor.amount.treshold']]">
+						expression="#[flowVars.finalAmountBigDecimal.compareTo(flowVars.otpAmountThreshold) == 1]">
 						<logger level="INFO" message="Validate Two Factor Auth : true"
 							doc:name="Logger" />
 						<set-variable

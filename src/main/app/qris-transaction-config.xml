@@ -542,16 +542,24 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 				<flow-ref name="logInfoFlow" doc:name="Flow Reference"/>
 				<json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
 				<set-variable variableName="qrisGwResponse" value="#[payload]" doc:name="Variable"/>
-				<set-payload value="#[org.equinox.api.qris.gateway.QrisGWStatusMapper.getResponseStatus(payload['39']).getMessage()]" doc:name="Set Payload"/>
-				<message-filter onUnaccepted="errorResponseFlow" doc:name="Message" >
-					<expression-filter expression="#[payload == 'PROCESSED']" />
-				</message-filter>
-				<expression-component doc:name="Expression"><![CDATA[
-					flowVars.qrisCreditResponse.setTraceNumber(flowVars.traceNumber);
-					flowVars.referenceNumber = flowVars.referenceNumber + org.apache.commons.lang.StringUtils.substring(flowVars.qrisGwResponse['123'],0,10);
-					flowVars.qrisCreditResponse.setReferenceNumber(flowVars.referenceNumber);]]>
-				</expression-component>
-				<flow-ref name="qrisCreditCallbackFlow" doc:name="Flow Reference"/>
+				<set-variable variableName="status" value="#[org.equinox.api.qris.gateway.QrisGWStatusMapper.getResponseStatus(payload['39']).getMessage()]" doc:name="Variable"/>
+				<choice doc:name="Choice">
+					<when expression="#[flowVars.status == 'PROCESSED']">
+						<expression-component doc:name="Expression"><![CDATA[
+							flowVars.qrisCreditResponse.setTraceNumber(flowVars.traceNumber);
+							flowVars.referenceNumber = flowVars.referenceNumber + org.apache.commons.lang.StringUtils.substring(flowVars.qrisGwResponse['123'],0,10);
+							flowVars.qrisCreditResponse.setReferenceNumber(flowVars.referenceNumber);]]>
+						</expression-component>
+						<flow-ref name="qrisCreditCallbackFlow" doc:name="Flow Reference"/>
+					</when>
+					<when expression="#[flowVars.status == 'PENDING']">
+						<flow-ref name="qrisCreditCallbackFlow" doc:name="Flow Reference"/>
+					</when>
+					<otherwise>
+						<set-payload value="#[flowVars.status]" doc:name="Set Payload"/>
+		        		<flow-ref name="htmlErrorResponseFlow" doc:name="Flow Reference"/>
+					</otherwise>
+				</choice>
 			</otherwise>
 		</choice>
 	</sub-flow>
@@ -696,8 +704,6 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 	
 	<sub-flow name="qrisCreditCallbackFlow">
 		<set-variable variableName="callbackUrl" value="#[org.apache.commons.lang.StringEscapeUtils.escapeHtml(flowVars.originalPayload['callbackUrl'])]" doc:name="Variable"/>
-		<set-variable variableName="qrisCreditResponse" value="#[flowVars.qrisCreditResponse]" doc:name="Variable"/>
-		<set-variable variableName="status" value="PROCESSED" doc:name="Variable"/>
 		<parse-template location="QRISCreditRedirect.tmp"
 			mimeType="text/html" doc:name="Parse Template" />
 		<set-property propertyName="content-type" value="text/html"
